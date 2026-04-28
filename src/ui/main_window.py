@@ -22,7 +22,6 @@ from PyQt6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QScrollArea,
-    QSizePolicy,
     QStackedWidget,
     QTableWidget,
     QTableWidgetItem,
@@ -32,7 +31,7 @@ from PyQt6.QtWidgets import (
 
 from src.analysis import ForecastPoint, RegressionForecaster, TrendAnalyzer, TrendSummary
 from src.data_processing import CleanedDataset, DataCleaner, DataLoader, DatasetInfo
-from src.education import ASSET_INFO, GLOSSARY, TIPS, TOPICS, TUTORIAL_STEPS
+from src.education import ASSET_INFO, TIPS, TUTORIAL_STEPS
 from src.ai import AICoach, ContextBuilder, GeminiService
 from src.learning import (
     LeaderboardManager,
@@ -47,7 +46,6 @@ from src.portfolio.portfolio import PortfolioState
 from src.ui.learn_page import LearnPage
 from src.ui.welcome_dialog import WelcomeDialog
 from src.visualization.charts import ChartPlaceholder
-from src.visualization.portfolio_chart import build_allocation_slices
 
 # ── palette ───────────────────────────────────────────────────────────────────
 _BG      = "#0b0f1a"
@@ -165,10 +163,14 @@ def _item(text: str, color: str = _TEXT, bold: bool = False,
     it.setForeground(QColor(color))
     it.setTextAlignment(int(Qt.AlignmentFlag.AlignVCenter | align))
     if bold or mono:
-        f = QFont("Consolas" if (bold or mono) else "")
+        f = QFont("Consolas")
         f.setBold(bold)
         it.setFont(f)
     return it
+
+
+def _ai_src(is_ai: bool) -> str:
+    return "🤖 Gemini AI yanıtı" if is_ai else "📋 Kural tabanlı analiz"
 
 
 # ── sidebar nav button ────────────────────────────────────────────────────────
@@ -596,11 +598,6 @@ class MainWindow(QMainWindow):
         act.addStretch()
         bottom.addLayout(act)
         vl.addLayout(bottom)
-
-        # ── Invisible tutorial labels kept for refresh compat ─────────────────
-        self._tut_step_labels: list[QLabel] = []
-        for _ in TUTORIAL_STEPS:
-            self._tut_step_labels.append(QLabel())
 
         return page
 
@@ -1054,9 +1051,6 @@ class MainWindow(QMainWindow):
         self.o_symbol.textChanged.connect(self._fill_market_price)
         self.o_qty.valueChanged.connect(self._update_order_total)
         self.o_price.valueChanged.connect(self._update_order_total)
-        # order side toggle
-        self.btn_buy_mode.clicked.connect(lambda: self._set_side("AL"))
-        self.btn_sell_mode.clicked.connect(lambda: self._set_side("SAT"))
         # quick fill buttons
         self.btn_max.clicked.connect(self._fill_max)
         self.btn_half.clicked.connect(self._fill_half)
@@ -1174,17 +1168,14 @@ class MainWindow(QMainWindow):
             if self._order_side == "AL":
                 trade = self.state.execute_buy(sym, qty, price)
                 self._trade_count += 1
-                self._tutorial_done["view_market"] = True
-                self._tutorial_done["first_buy"]   = True
                 self._extra.user_buy_count    += 1
                 self._extra.max_single_buy_tl  = max(self._extra.max_single_buy_tl, trade.total)
 
                 # Mistake detection (after execution so we can inspect new state)
-                warnings = self._detector.check_after_buy(self.state, sym, trade.total, cash_before)
-                warnings += self._detector.check_portfolio_health(self.state)
-                for w in warnings:
-                    if hasattr(self, "_learn_page"):
-                        self._learn_page.show_mistake_warning(w)
+                self._show_warnings(
+                    self._detector.check_after_buy(self.state, sym, trade.total, cash_before)
+                    + self._detector.check_portfolio_health(self.state)
+                )
 
                 # AI Coach suggestion (async — fires callback when ready)
                 action_desc = f"Bought {sym} TL {trade.total:,.0f}"
@@ -1211,17 +1202,15 @@ class MainWindow(QMainWindow):
                 is_profitable   = bool(pos and price > pos.avg_cost)
 
                 trade = self.state.execute_sell(sym, qty, price)
-                self._tutorial_done["first_sell"] = True
                 self._extra.user_sell_count += 1
                 if is_profitable:
                     self._extra.profitable_sell_count += 1
 
                 # Mistake detection for sell
-                warnings = self._detector.check_after_sell(self.state, sym, price, avg_cost_before)
-                warnings += self._detector.check_portfolio_health(self.state)
-                for w in warnings:
-                    if hasattr(self, "_learn_page"):
-                        self._learn_page.show_mistake_warning(w)
+                self._show_warnings(
+                    self._detector.check_after_sell(self.state, sym, price, avg_cost_before)
+                    + self._detector.check_portfolio_health(self.state)
+                )
 
                 # AI Coach suggestion
                 pnl_label = "kâr" if is_profitable else "zarar"
@@ -1239,7 +1228,6 @@ class MainWindow(QMainWindow):
             return
 
         self._full_refresh()
-        self._refresh_tutorial()
         self.statusBar().showMessage(msg, 6000)
 
     def _close_position(self) -> None:
@@ -1278,11 +1266,10 @@ class MainWindow(QMainWindow):
             self._extra.profitable_sell_count += 1
 
         # Mistake detection for position close
-        warnings = self._detector.check_after_sell(self.state, sym, price, avg_cost_before)
-        warnings += self._detector.check_portfolio_health(self.state)
-        for w in warnings:
-            if hasattr(self, "_learn_page"):
-                self._learn_page.show_mistake_warning(w)
+        self._show_warnings(
+            self._detector.check_after_sell(self.state, sym, price, avg_cost_before)
+            + self._detector.check_portfolio_health(self.state)
+        )
 
         self._full_refresh()
         self.statusBar().showMessage(
@@ -1367,28 +1354,7 @@ class MainWindow(QMainWindow):
         self._refresh_data()
         self._refresh_analysis()
         self._refresh_tutorial()
-        self._refresh_portfolio_alloc()
         self._refresh_learn()
-
-    def _refresh_portfolio_alloc(self) -> None:
-        if not hasattr(self, "_portfolio_alloc"):
-            return
-        pv = self.state.portfolio_value
-        if pv <= 0:
-            return
-        _palette = [
-            "#ef4444", "#f59e0b", "#3b82f6", "#10b981",
-            "#8b5cf6", "#06b6d4", "#f97316", "#84cc16",
-            "#64748b",
-        ]
-        slices: list[tuple[str, float, str]] = []
-        for i, pos in enumerate(self.state.positions):
-            pct   = pos.market_value / pv * 100
-            color = _palette[i % len(_palette)]
-            slices.append((pos.symbol, round(pct, 1), color))
-        cash_pct = self.state.cash / pv * 100
-        slices.append(("NAKİT", round(cash_pct, 1), "#64748b"))
-        self._portfolio_alloc.set_slices(slices)
 
     def _refresh_learn(self) -> None:
         if not hasattr(self, "_learn_page"):
@@ -1415,15 +1381,7 @@ class MainWindow(QMainWindow):
         self.d_level_sub.setText(f"{icon} {label}  ·  {curr}/{total}")
 
         # ── Active task ────────────────────────────────────────────────────────
-        active_task = None
-        for lvl in getattr(self._ls, "levels", []):
-            if not lvl.is_unlocked(xp):
-                continue
-            t = lvl.get_next_task(getattr(self._ls, "_completed_tasks", set()))
-            if t:
-                active_task = t
-                break
-
+        active_task = self._get_active_task()
         if active_task:
             self.d_task_icon_lbl.setText(active_task.icon)
             self.d_task_title_lbl.setText(active_task.title)
@@ -1453,8 +1411,7 @@ class MainWindow(QMainWindow):
         # ── AI suggestion ─────────────────────────────────────────────────────
         if self._last_ai_sugg:
             self.d_ai_sugg_lbl.setText(self._last_ai_sugg)
-            src = "🤖 Gemini AI yanıtı" if self._last_ai_is_gemini else "📋 Kural tabanlı analiz"
-            self.d_ai_source_lbl.setText(src)
+            self.d_ai_source_lbl.setText(_ai_src(self._last_ai_is_gemini))
 
         dot = "🟢" if self._ai_coach.gemini_available else "🟡"
         self.d_ai_status_dot.setText(f"{dot} {self._ai_coach.gemini_status}")
@@ -1464,16 +1421,7 @@ class MainWindow(QMainWindow):
     def _refresh_trade_task(self) -> None:
         if not hasattr(self, "t_task_title"):
             return
-        xp = self._ls.xp
-        active_task = None
-        for lvl in getattr(self._ls, "levels", []):
-            if not lvl.is_unlocked(xp):
-                continue
-            t = lvl.get_next_task(getattr(self._ls, "_completed_tasks", set()))
-            if t:
-                active_task = t
-                break
-
+        active_task = self._get_active_task()
         if active_task:
             self.t_task_icon.setText(active_task.icon)
             self.t_task_title.setText(f"Görev: {active_task.title}")
@@ -1764,6 +1712,23 @@ class MainWindow(QMainWindow):
     # HELPERS
     # ══════════════════════════════════════════════════════════════════════════
 
+    def _show_warnings(self, warnings: list) -> None:
+        """Forward MistakeWarning list to the learn page as coaching toasts."""
+        if hasattr(self, "_learn_page"):
+            for w in warnings:
+                self._learn_page.show_mistake_warning(w)
+
+    def _get_active_task(self) -> "object | None":
+        """Return the next incomplete task across all unlocked levels, or None."""
+        xp = self._ls.xp
+        for lvl in getattr(self._ls, "levels", []):
+            if not lvl.is_unlocked(xp):
+                continue
+            t = lvl.get_next_task(getattr(self._ls, "_completed_tasks", set()))
+            if t:
+                return t
+        return None
+
     def _fire_analysis_ai(self) -> None:
         """Ask AI Coach for a commentary on the current analysis/simulation."""
         if not hasattr(self, "an_ai_lbl"):
@@ -1779,8 +1744,7 @@ class MainWindow(QMainWindow):
             self._last_ai_is_gemini = is_ai
             if hasattr(self, "an_ai_lbl"):
                 self.an_ai_lbl.setText(text)
-                src = "🤖 Gemini AI yanıtı" if is_ai else "📋 Kural tabanlı analiz"
-                self.an_ai_source.setText(src)
+                self.an_ai_source.setText(_ai_src(is_ai))
                 self.an_ai_spinner.setText("")
             self._refresh_dashboard_learning()
 
@@ -1840,34 +1804,14 @@ class MainWindow(QMainWindow):
             self._tip_index += 1
 
     def _refresh_tutorial(self) -> None:
-        if not hasattr(self, "_tut_step_labels"):
-            return
-        has_trade     = len(self.state.trade_history) > 0
-        has_sell      = any(t.side == "SAT" for t in self.state.trade_history)
-        has_positions = len(self.state.positions) > 0
-
-        self._tutorial_done["view_market"]    = True   # always true once app runs
-        self._tutorial_done["first_buy"]      = has_trade
-        self._tutorial_done["check_portfolio"] = has_positions or has_trade
-        self._tutorial_done["first_sell"]     = has_sell
-        self._tutorial_done["check_history"]  = has_sell
-        self._tutorial_done["run_analysis"]   = self.trend_summary is not None
-
-        for i, step in enumerate(TUTORIAL_STEPS):
-            if i >= len(self._tut_step_labels):
-                break
-            done = self._tutorial_done.get(step["id"], False)
-            lbl  = self._tut_step_labels[i]
-            if done:
-                lbl.setText("✓")
-                lbl.setStyleSheet(f"color:{_GREEN}; font-weight:700;")
-            else:
-                lbl.setText("○")
-                lbl.setStyleSheet(f"color:{_TEXT3}; font-weight:400;")
-
-        # keep learn page in sync
-        if hasattr(self, "_learn_page"):
-            self._learn_page.refresh(self.state, self._extra.to_dict())
+        has_trade = len(self.state.trade_history) > 0
+        has_sell  = any(t.side == "SAT" for t in self.state.trade_history)
+        self._tutorial_done["view_market"]     = True
+        self._tutorial_done["first_buy"]       = has_trade
+        self._tutorial_done["check_portfolio"] = has_trade or bool(self.state.positions)
+        self._tutorial_done["first_sell"]      = has_sell
+        self._tutorial_done["check_history"]   = has_sell
+        self._tutorial_done["run_analysis"]    = self.trend_summary is not None
 
     # ══════════════════════════════════════════════════════════════════════════
     # STYLES
@@ -2182,14 +2126,6 @@ class MainWindow(QMainWindow):
 
         /* ── learn page new elements ── */
         QFrame#xpHeader {{
-            background: {_TOPBAR};
-            border-bottom: 1px solid {_BORDER};
-        }}
-        QLabel#learnHeader {{
-            color: {_AMBER};
-            font-size: 13px;
-            font-weight: 700;
-            padding-left: 12px;
             background: {_TOPBAR};
             border-bottom: 1px solid {_BORDER};
         }}
