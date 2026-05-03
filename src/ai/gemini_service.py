@@ -19,15 +19,13 @@ from PyQt6.QtCore import QThread, pyqtSignal
 # ── System instruction (shared across all prompt types) ───────────────────────
 
 _SYSTEM_INSTRUCTION = (
-    "You are a financial AI coach embedded in a portfolio management app. "
-    "You receive structured portfolio data and must give exactly 1-2 sentences "
-    "of specific, actionable advice. "
-    "Always reference actual numbers, asset names, or percentages from the data. "
-    "Never give generic advice like 'diversify your portfolio'. "
-    "Instead say: 'BTC represents 72% of your portfolio — reduce it below 50% by buying ETH or AAPL.' "
-    "If the user asks a question, answer it directly using the data. "
-    "In learning mode, give a hint, not the full solution. "
-    "Respond in the same language the user writes in (Turkish or English)."
+    "You are a financial AI coach embedded in a portfolio simulator app for Turkish users. "
+    "You have access to the user's live portfolio data — always reference real numbers, asset names, and percentages. "
+    "For coaching suggestions: give 2-4 sentences of specific, actionable advice grounded in the data. "
+    "For user questions: give a thorough, helpful answer using the portfolio data — be as detailed as needed. "
+    "For learning hints: give a clear 1-2 sentence hint, not the full solution. "
+    "Never give vague generic advice. Be direct, concrete, and educational. "
+    "Always respond in Turkish."
 )
 
 
@@ -73,17 +71,18 @@ class GeminiService:
       - make_worker(context, question, fallback) → GeminiWorker
     """
 
-    MODEL_NAME       = "gemini-1.5-flash"
-    MAX_OUTPUT_CHARS = 450
+    MODEL_NAME       = "gemini-2.5-flash-lite"
+    MAX_OUTPUT_CHARS = 2000
     MIN_OUTPUT_CHARS = 12
     MAX_CACHE_SIZE   = 60
 
     def __init__(self, api_key: str | None = None) -> None:
-        self._api_key    = api_key or self._read_key()
-        self._model: object | None = None
+        self._api_key     = api_key or self._read_key()
+        self._model: object | None  = None
+        self._genai_types: object | None = None
         self._cache: dict[str, str] = {}
-        self._available  = False
-        self._error_msg  = ""
+        self._available   = False
+        self._error_msg   = ""
         self._init_model()
 
     # ── Initialisation ────────────────────────────────────────────────────────
@@ -107,24 +106,22 @@ class GeminiService:
 
     def _init_model(self) -> None:
         if not self._api_key:
-            self._error_msg = "API anahtarı bulunamadı. GEMINI_API_KEY ortam değişkenini ayarlayın."
+            self._error_msg = "API anahtarı bulunamadı. .env dosyasına GEMINI_API_KEY ekleyin."
             return
         try:
-            import google.generativeai as genai  # type: ignore[import]
-            genai.configure(api_key=self._api_key)
-            self._model = genai.GenerativeModel(
-                model_name=self.MODEL_NAME,
-                system_instruction=_SYSTEM_INSTRUCTION,
-                generation_config={"max_output_tokens": 150, "temperature": 0.4},
-            )
+            from google import genai  # type: ignore[import]
+            from google.genai import types  # type: ignore[import]
+            client = genai.Client(api_key=self._api_key)
+            self._model    = client
+            self._genai_types = types
             self._available = True
         except ImportError:
-            self._error_msg = "google-generativeai paketi yüklü değil."
+            self._error_msg = "google-genai paketi yüklü değil."
         except Exception as exc:
             self._error_msg = f"Model başlatılamadı: {exc}"
 
     def configure(self, api_key: str) -> bool:
-        """Re-initialise with a new API key (called from settings UI)."""
+        """Re-initialise with a new API key."""
         self._api_key   = api_key.strip()
         self._available = False
         self._model     = None
@@ -209,7 +206,7 @@ class GeminiService:
 
         if user_question:
             return f"[Portfolio Data]\n{data_block}\n\n[User Question]\n{user_question}"
-        return f"[Portfolio Data]\n{data_block}\n\n[Request]\nProvide 1-2 sentence specific coaching advice."
+        return f"[Portfolio Data]\n{data_block}\n\n[Request]\nPortföy verilerine dayanarak spesifik ve eyleme geçirilebilir koçluk önerisi ver."
 
     # ── Synchronous call ──────────────────────────────────────────────────────
 
@@ -228,15 +225,23 @@ class GeminiService:
 
         prompt = self.build_prompt(context, user_question)
         try:
-            resp = self._model.generate_content(prompt)  # type: ignore[union-attr]
-            text = resp.text.strip() if hasattr(resp, "text") else ""
-        except Exception:
+            response = self._model.models.generate_content(  # type: ignore[union-attr]
+                model=self.MODEL_NAME,
+                contents=prompt,
+                config=self._genai_types.GenerateContentConfig(
+                    system_instruction=_SYSTEM_INSTRUCTION,
+                    max_output_tokens=600,
+                    temperature=0.6,
+                ),
+            )
+            text = response.text.strip() if response.text else ""
+        except Exception as exc:
+            self._error_msg = str(exc)[:120]
             return None
 
         if not (self.MIN_OUTPUT_CHARS <= len(text) <= self.MAX_OUTPUT_CHARS):
             return None
 
-        # Evict oldest entry if cache is full
         if len(self._cache) >= self.MAX_CACHE_SIZE:
             del self._cache[next(iter(self._cache))]
         self._cache[h] = text

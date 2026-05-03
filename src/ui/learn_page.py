@@ -47,8 +47,6 @@ _ACCENT = "#2563eb"
 _GREEN  = "#10b981"
 _RED    = "#ef4444"
 _AMBER  = "#f59e0b"
-_PURPLE = "#8b5cf6"
-_CYAN   = "#06b6d4"
 _TEXT   = "#e2e8f0"
 _TEXT2  = "#94a3b8"
 _TEXT3  = "#64748b"
@@ -820,7 +818,7 @@ class AnalyticsPage(QScrollArea):
             ("total_trades",   "TOPLAM İŞLEM",      _TEXT,   "—"),
             ("buy_count",      "TOPLAM ALIM",        _GREEN,  "—"),
             ("sell_count",     "TOPLAM SATIM",       _RED,    "—"),
-            ("total_volume",   "TOPLAM HACİM",       _CYAN,   "—"),
+            ("total_volume",   "TOPLAM HACİM",       _ACCENT, "—"),
             ("total_pnl",      "TOPLAM K/Z",         _GREEN,  "—"),
             ("realized_pnl",   "GERÇEKLEŞMİŞ K/Z",  _GREEN,  "—"),
             ("unrealized_pnl", "GERÇEKLEŞMEMİŞ K/Z",_AMBER,  "—"),
@@ -1276,261 +1274,292 @@ class ToastNotification(QFrame):
 # ── AI Coach Page ─────────────────────────────────────────────────────────────
 
 class AICoachPage(QScrollArea):
-    """
-    Hybrid AI Coach panel — rule-based fallback + optional Gemini enhancement.
+    """Redesigned AI Coach — ask section is the hero element."""
 
-    Features
-    --------
-    * Status bar showing Gemini availability + live portfolio snapshot
-    * Smart Suggestion — updated after every trade/action
-    * Ask AI — free-text Q&A wired to AICoach.answer_question()
-    * Learning Hint — one-click hint for the current active task
-    * API Key setup — inline input when key is missing
-    """
+    _QUICK_QUESTIONS = [
+        "Portföy riskimi nasıl düşürürüm?",
+        "En iyi işlemim hangisi?",
+        "Şu an ne almalıyım?",
+        "Neden zarar ediyorum?",
+    ]
 
     def __init__(self, ai_coach: "object | None" = None) -> None:
         super().__init__()
-        self._coach    = ai_coach   # AICoach instance (or None)
-        self._state: object | None    = None
-        self._extra: object | None    = None
-        self._ls:    object | None    = None
-        self._lb:    object | None    = None
+        self._coach           = ai_coach
+        self._state: object | None = None
+        self._extra: object | None = None
+        self._ls:    object | None = None
+        self._lb:    object | None = None
         self._active_task: object | None = None
 
         self.setWidgetResizable(True)
         self.setFrameShape(QFrame.Shape.NoFrame)
         self._inner = QWidget()
         self._vl    = QVBoxLayout(self._inner)
-        self._vl.setContentsMargins(24, 20, 24, 24)
-        self._vl.setSpacing(14)
+        self._vl.setContentsMargins(28, 24, 28, 28)
+        self._vl.setSpacing(16)
         self.setWidget(self._inner)
         self._build()
 
     # ── Build ──────────────────────────────────────────────────────────────────
 
     def _build(self) -> None:
-        self._build_header()
-        self._build_status_bar()
-        self._build_suggestion_panel()
-        self._build_qa_panel()
-        self._build_hint_panel()
-        self._build_context_panel()
+        self._build_top_bar()
+        self._build_ask_hero()
+        self._build_response_area()
+        self._build_bottom_row()
         self._vl.addStretch()
 
-    @staticmethod
-    def _make_panel(obj_name: str) -> tuple[QFrame, QVBoxLayout]:
-        """Return a styled QFrame + its QVBoxLayout for AI sub-panels."""
-        frm = QFrame()
-        frm.setObjectName(obj_name)
-        frm.setStyleSheet(
-            f"QFrame#{obj_name} {{background:{_SURF}; border:1px solid {_BORDER}; border-radius:10px;}}"
-        )
-        vl = QVBoxLayout(frm)
-        vl.setContentsMargins(18, 14, 18, 14)
-        vl.setSpacing(10)
-        return frm, vl
+    # ── Top bar: title + gemini status ─────────────────────────────────────────
 
-    def _build_header(self) -> None:
-        hdr, _ = _page_header("🤖", "AI Koç", "Portföy verilerine dayalı kişiselleştirilmiş koçluk.")
-        self._vl.addLayout(hdr)
-        self._vl.addWidget(_sep())
-
-    def _build_status_bar(self) -> None:
-        frm = QFrame()
-        frm.setObjectName("aiStatusBar")
-        hl  = QHBoxLayout(frm)
-        hl.setContentsMargins(14, 10, 14, 10)
+    def _build_top_bar(self) -> None:
+        hl = QHBoxLayout()
         hl.setSpacing(12)
 
-        self._status_dot = QLabel("●")
-        self._status_dot.setFixedWidth(16)
-        self._status_msg  = QLabel("Yükleniyor…")
-        self._status_msg.setStyleSheet(f"color:{_TEXT2}; font-size:12px;")
-        hl.addWidget(self._status_dot)
-        hl.addWidget(self._status_msg, 1)
+        icon = QLabel("🤖")
+        icon.setStyleSheet("font-size:26px;")
+        hl.addWidget(icon)
 
-        # Inline API key input (shown when key missing)
-        self._key_input = _line_edit("GEMINI_API_KEY yapıştırın…")
-        self._key_input.setEchoMode(self._key_input.EchoMode.Password)
-        self._key_input.setFixedWidth(280)
-        self._key_btn = QPushButton("Bağlan")
-        self._key_btn.setFixedHeight(30)
-        self._key_btn.setStyleSheet(
-            f"background:{_ACCENT}; color:white; border:none; border-radius:5px; "
-            f"font-size:11px; font-weight:700; padding:0 12px;"
-        )
-        self._key_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._key_btn.clicked.connect(self._on_connect_key)
-        hl.addWidget(self._key_input)
-        hl.addWidget(self._key_btn)
-        self._vl.addWidget(frm)
-        self._refresh_status()
+        title_col = QVBoxLayout()
+        title_col.setSpacing(1)
+        title = QLabel("AI Koç")
+        title.setStyleSheet(f"color:{_TEXT}; font-size:20px; font-weight:800;")
+        self._status_lbl = QLabel("Yükleniyor…")
+        self._status_lbl.setStyleSheet(f"color:{_TEXT3}; font-size:11px;")
+        title_col.addWidget(title)
+        title_col.addWidget(self._status_lbl)
+        hl.addLayout(title_col)
+        hl.addStretch()
 
-    def _build_suggestion_panel(self) -> None:
-        frm, vl = self._make_panel("aiSuggPanel")
-
-        hdr = QHBoxLayout()
-        title = QLabel("💡  Akıllı Öneri")
-        title.setStyleSheet(f"color:{_TEXT3}; font-size:10px; font-weight:700; letter-spacing:1px;")
-        hdr.addWidget(title)
-        hdr.addStretch()
-        self._sugg_loading = QLabel("⏳")
-        self._sugg_loading.setStyleSheet(f"color:{_AMBER}; font-size:12px;")
-        self._sugg_loading.setVisible(False)
-        hdr.addWidget(self._sugg_loading)
-        self._refresh_sugg_btn = QPushButton("↻ Yenile")
-        self._refresh_sugg_btn.setFixedHeight(26)
+        # Suggestion refresh button (compact, top-right)
+        self._refresh_sugg_btn = QPushButton("↻  Öneri Yenile")
+        self._refresh_sugg_btn.setFixedHeight(32)
         self._refresh_sugg_btn.setStyleSheet(
             f"background:{_SURF2}; color:{_TEXT2}; border:1px solid {_BORDER}; "
-            f"border-radius:5px; font-size:10px; font-weight:600; padding:0 10px;"
+            f"border-radius:7px; font-size:11px; font-weight:600; padding:0 14px;"
         )
         self._refresh_sugg_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._refresh_sugg_btn.clicked.connect(self._on_refresh_suggestion)
-        hdr.addWidget(self._refresh_sugg_btn)
-        vl.addLayout(hdr)
+        hl.addWidget(self._refresh_sugg_btn)
 
-        self._sugg_lbl = QLabel("Henüz öneri yok. Bir işlem gerçekleştirin.")
-        self._sugg_lbl.setStyleSheet(f"color:{_TEXT}; font-size:13px; line-height:1.5;")
+        self._vl.addLayout(hl)
+        self._vl.addWidget(_sep())
+
+        # Smart suggestion strip (subtle, 1 line below header)
+        self._sugg_strip = QFrame()
+        self._sugg_strip.setStyleSheet(
+            f"background:{_SURF2}; border:1px solid {_BORDER}; border-radius:8px;"
+        )
+        strip_hl = QHBoxLayout(self._sugg_strip)
+        strip_hl.setContentsMargins(14, 10, 14, 10)
+        strip_hl.setSpacing(10)
+        bulb = QLabel("💡")
+        bulb.setStyleSheet("font-size:14px;")
+        strip_hl.addWidget(bulb)
+        self._sugg_lbl = QLabel("Bir işlem gerçekleştirin — AI koçunuz analiz edecek.")
+        self._sugg_lbl.setStyleSheet(f"color:{_TEXT2}; font-size:12px;")
         self._sugg_lbl.setWordWrap(True)
-        vl.addWidget(self._sugg_lbl)
-
+        strip_hl.addWidget(self._sugg_lbl, 1)
+        self._sugg_loading = QLabel("⏳")
+        self._sugg_loading.setStyleSheet(f"color:{_AMBER}; font-size:13px;")
+        self._sugg_loading.setVisible(False)
+        strip_hl.addWidget(self._sugg_loading)
         self._sugg_source = QLabel()
         self._sugg_source.setStyleSheet(f"color:{_TEXT3}; font-size:10px;")
-        vl.addWidget(self._sugg_source)
-        self._vl.addWidget(frm)
+        strip_hl.addWidget(self._sugg_source)
+        self._vl.addWidget(self._sugg_strip)
 
-    def _build_qa_panel(self) -> None:
-        frm, vl = self._make_panel("aiQAPanel")
+        self._refresh_status()
 
-        title = QLabel("💬  AI'ya Sor")
-        title.setStyleSheet(f"color:{_TEXT3}; font-size:10px; font-weight:700; letter-spacing:1px;")
-        vl.addWidget(title)
+    # ── Hero ask section ───────────────────────────────────────────────────────
 
-        examples_lbl = QLabel("Örn: 'Portföy riskimi nasıl düşürürüm?'  ·  'En iyi işlemim ne?'  ·  'Ne alayım?'")
-        examples_lbl.setStyleSheet(f"color:{_TEXT3}; font-size:10px; font-style:italic;")
-        vl.addWidget(examples_lbl)
-
-        input_row = QHBoxLayout(); input_row.setSpacing(8)
-        self._qa_input = _line_edit("Sorunuzu yazın…")
-        self._qa_input.returnPressed.connect(self._on_ask)
-        input_row.addWidget(self._qa_input, 1)
-        ask_btn = QPushButton("Sor  →")
-        ask_btn.setFixedHeight(36)
-        ask_btn.setStyleSheet(
-            f"background:{_ACCENT}; color:white; border:none; "
-            f"border-radius:6px; font-size:12px; font-weight:700; padding:0 16px;"
+    def _build_ask_hero(self) -> None:
+        hero = QFrame()
+        hero.setObjectName("aiHero")
+        hero.setStyleSheet(
+            f"QFrame#aiHero {{"
+            f"background:{_SURF}; border:2px solid {_ACCENT}44; border-radius:14px;"
+            f"}}"
         )
-        ask_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        ask_btn.clicked.connect(self._on_ask)
-        input_row.addWidget(ask_btn)
-        vl.addLayout(input_row)
+        vl = QVBoxLayout(hero)
+        vl.setContentsMargins(24, 20, 24, 20)
+        vl.setSpacing(14)
 
-        self._qa_loading = QLabel("⏳  Yanıt bekleniyor…")
-        self._qa_loading.setStyleSheet(f"color:{_AMBER}; font-size:11px;")
+        # Section label
+        lbl = QLabel("💬  AI'ya Sor")
+        lbl.setStyleSheet(f"color:{_ACCENT}; font-size:11px; font-weight:800; letter-spacing:1px;")
+        vl.addWidget(lbl)
+
+        # Large input + send button
+        input_hl = QHBoxLayout()
+        input_hl.setSpacing(10)
+
+        self._qa_input = QLineEdit()
+        self._qa_input.setPlaceholderText("Portföyünüz hakkında bir soru sorun…")
+        self._qa_input.setFixedHeight(46)
+        self._qa_input.setStyleSheet(
+            f"background:{_SURF2}; border:2px solid {_ACCENT}55; border-radius:10px; "
+            f"color:{_TEXT}; padding:0 16px; font-size:14px;"
+            f"selection-background-color:{_ACCENT}44;"
+        )
+        self._qa_input.returnPressed.connect(self._on_ask)
+        input_hl.addWidget(self._qa_input, 1)
+
+        self._ask_btn = QPushButton("Sor  →")
+        self._ask_btn.setFixedSize(90, 46)
+        self._ask_btn.setStyleSheet(
+            f"background:{_ACCENT}; color:white; border:none; "
+            f"border-radius:10px; font-size:14px; font-weight:800;"
+        )
+        self._ask_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._ask_btn.clicked.connect(self._on_ask)
+        input_hl.addWidget(self._ask_btn)
+        vl.addLayout(input_hl)
+
+        # Quick-question chips
+        chips_lbl = QLabel("Hızlı sorular:")
+        chips_lbl.setStyleSheet(f"color:{_TEXT3}; font-size:10px; font-weight:600;")
+        vl.addWidget(chips_lbl)
+
+        chips_hl = QHBoxLayout()
+        chips_hl.setSpacing(8)
+        for q in self._QUICK_QUESTIONS:
+            chip = QPushButton(q)
+            chip.setFixedHeight(28)
+            chip.setStyleSheet(
+                f"background:{_SURF2}; color:{_TEXT2}; border:1px solid {_BORDER}; "
+                f"border-radius:14px; font-size:10px; font-weight:500; padding:0 12px;"
+            )
+            chip.setCursor(Qt.CursorShape.PointingHandCursor)
+            chip.clicked.connect(lambda _c, text=q: self._on_chip_click(text))
+            chips_hl.addWidget(chip)
+        chips_hl.addStretch()
+        vl.addLayout(chips_hl)
+
+        self._vl.addWidget(hero)
+
+    # ── Response area ──────────────────────────────────────────────────────────
+
+    def _build_response_area(self) -> None:
+        self._resp_frame = QFrame()
+        self._resp_frame.setObjectName("aiResp")
+        self._resp_frame.setStyleSheet(
+            f"QFrame#aiResp {{"
+            f"background:{_SURF}; border:1px solid {_BORDER}; border-radius:12px;"
+            f"}}"
+        )
+        self._resp_frame.setVisible(False)
+        vl = QVBoxLayout(self._resp_frame)
+        vl.setContentsMargins(22, 18, 22, 18)
+        vl.setSpacing(10)
+
+        resp_hdr = QHBoxLayout()
+        resp_icon = QLabel("🤖")
+        resp_icon.setStyleSheet("font-size:18px;")
+        resp_hdr.addWidget(resp_icon)
+        resp_title = QLabel("AI Yanıtı")
+        resp_title.setStyleSheet(f"color:{_TEXT3}; font-size:10px; font-weight:700; letter-spacing:1px;")
+        resp_hdr.addWidget(resp_title)
+        resp_hdr.addStretch()
+        self._qa_source = QLabel()
+        self._qa_source.setStyleSheet(
+            f"color:{_GREEN}; font-size:10px; font-weight:600; "
+            f"background:{_GREEN}11; border:1px solid {_GREEN}33; border-radius:4px; padding:2px 8px;"
+        )
+        resp_hdr.addWidget(self._qa_source)
+        vl.addLayout(resp_hdr)
+
+        self._qa_loading = QLabel("⏳  Gemini düşünüyor…")
+        self._qa_loading.setStyleSheet(f"color:{_AMBER}; font-size:12px; font-weight:600;")
         self._qa_loading.setVisible(False)
         vl.addWidget(self._qa_loading)
 
         self._qa_answer = QLabel("")
         self._qa_answer.setStyleSheet(
-            f"color:{_TEXT}; font-size:13px; "
-            f"background:{_SURF2}; border:1px solid {_BORDER}; border-radius:7px; "
-            f"padding:10px 12px;"
+            f"color:{_TEXT}; font-size:14px; line-height:1.6;"
         )
         self._qa_answer.setWordWrap(True)
         self._qa_answer.setVisible(False)
         vl.addWidget(self._qa_answer)
 
-        self._qa_source = QLabel()
-        self._qa_source.setStyleSheet(f"color:{_TEXT3}; font-size:10px;")
-        vl.addWidget(self._qa_source)
-        self._vl.addWidget(frm)
+        self._vl.addWidget(self._resp_frame)
 
-    def _build_hint_panel(self) -> None:
-        frm, vl = self._make_panel("aiHintPanel")
+    # ── Bottom row: hint + portfolio snapshot ──────────────────────────────────
 
-        hdr = QHBoxLayout()
-        title = QLabel("🎯  Görev İpucu")
-        title.setStyleSheet(f"color:{_TEXT3}; font-size:10px; font-weight:700; letter-spacing:1px;")
-        hdr.addWidget(title); hdr.addStretch()
-        hint_btn = QPushButton("İpucu Al")
-        hint_btn.setFixedHeight(28)
-        hint_btn.setStyleSheet(
-            f"background:{_PURPLE}22; color:{_PURPLE}; border:1px solid {_PURPLE}44; "
-            f"border-radius:5px; font-size:11px; font-weight:700; padding:0 12px;"
+    def _build_bottom_row(self) -> None:
+        row = QHBoxLayout()
+        row.setSpacing(12)
+
+        # ── Görev ipucu (sol) ──────────────────────────────────────────────────
+        hint_frm = QFrame()
+        hint_frm.setObjectName("aiHintF")
+        hint_frm.setStyleSheet(
+            f"QFrame#aiHintF {{background:{_SURF}; border:1px solid {_BORDER}; border-radius:10px;}}"
         )
-        hint_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        hint_btn.clicked.connect(self._on_get_hint)
-        hdr.addWidget(hint_btn)
-        vl.addLayout(hdr)
+        hint_vl = QVBoxLayout(hint_frm)
+        hint_vl.setContentsMargins(18, 14, 18, 14)
+        hint_vl.setSpacing(8)
+
+        hint_hdr = QHBoxLayout()
+        hint_title = QLabel("🎯  Görev İpucu")
+        hint_title.setStyleSheet(f"color:{_TEXT3}; font-size:10px; font-weight:700; letter-spacing:1px;")
+        hint_hdr.addWidget(hint_title)
+        hint_hdr.addStretch()
+        self._hint_btn = QPushButton("İpucu Al")
+        self._hint_btn.setFixedHeight(28)
+        self._hint_btn.setStyleSheet(
+            f"background:{_ACCENT}; color:white; border:none; "
+            f"border-radius:6px; font-size:11px; font-weight:700; padding:0 14px;"
+        )
+        self._hint_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._hint_btn.clicked.connect(self._on_get_hint)
+        hint_hdr.addWidget(self._hint_btn)
+        hint_vl.addLayout(hint_hdr)
 
         self._hint_task_lbl = QLabel("Aktif görev: —")
         self._hint_task_lbl.setStyleSheet(f"color:{_TEXT2}; font-size:11px;")
-        vl.addWidget(self._hint_task_lbl)
+        hint_vl.addWidget(self._hint_task_lbl)
 
         self._hint_lbl = QLabel("")
         self._hint_lbl.setStyleSheet(
-            f"color:{_PURPLE}; font-size:12px; font-weight:600; "
-            f"background:{_PURPLE}0d; border:1px solid {_PURPLE}33; border-radius:7px; padding:8px 12px;"
+            f"color:{_TEXT}; font-size:12px; font-weight:500; "
+            f"background:{_ACCENT}0d; border:1px solid {_ACCENT}33; "
+            f"border-radius:7px; padding:8px 12px;"
         )
         self._hint_lbl.setWordWrap(True)
         self._hint_lbl.setVisible(False)
-        vl.addWidget(self._hint_lbl)
-        self._vl.addWidget(frm)
+        hint_vl.addWidget(self._hint_lbl)
+        row.addWidget(hint_frm, 1)
 
-    def _build_context_panel(self) -> None:
-        """Collapsible portfolio context snapshot (for transparency)."""
-        frm = QFrame()
-        frm.setObjectName("aiCtxPanel")
-        frm.setStyleSheet(
-            f"QFrame#aiCtxPanel {{background:{_SURF2}; border:1px solid {_BORDER}; border-radius:8px;}}"
+        # ── Portföy özeti (sağ) ────────────────────────────────────────────────
+        ctx_frm = QFrame()
+        ctx_frm.setObjectName("aiCtxF")
+        ctx_frm.setStyleSheet(
+            f"QFrame#aiCtxF {{background:{_SURF}; border:1px solid {_BORDER}; border-radius:10px;}}"
         )
-        vl = QVBoxLayout(frm)
-        vl.setContentsMargins(16, 12, 16, 12)
-        vl.setSpacing(6)
+        ctx_vl = QVBoxLayout(ctx_frm)
+        ctx_vl.setContentsMargins(18, 14, 18, 14)
+        ctx_vl.setSpacing(6)
 
-        hdr = QHBoxLayout()
-        title = QLabel("🔍  AI'ya Gönderilen Veriler")
-        title.setStyleSheet(f"color:{_TEXT3}; font-size:10px; font-weight:700; letter-spacing:1px;")
-        hdr.addWidget(title); hdr.addStretch()
-        toggle_btn = QPushButton("▼ Göster")
-        toggle_btn.setFixedHeight(24)
-        toggle_btn.setStyleSheet(
-            f"background:transparent; color:{_TEXT3}; border:none; font-size:10px;"
-        )
-        toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        hdr.addWidget(toggle_btn)
-        vl.addLayout(hdr)
+        ctx_title = QLabel("📊  Portföy Anlık Durum")
+        ctx_title.setStyleSheet(f"color:{_TEXT3}; font-size:10px; font-weight:700; letter-spacing:1px;")
+        ctx_vl.addWidget(ctx_title)
 
         self._ctx_body = QLabel("—")
         self._ctx_body.setStyleSheet(
-            f"color:{_TEXT3}; font-size:10px; font-family:Consolas; "
-            f"background:{_SURF3}; border-radius:5px; padding:8px;"
+            f"color:{_TEXT2}; font-size:11px; font-family:Consolas; line-height:1.6;"
         )
         self._ctx_body.setWordWrap(True)
-        self._ctx_body.setVisible(False)
-        self._ctx_open = False
-        vl.addWidget(self._ctx_body)
+        ctx_vl.addWidget(self._ctx_body)
+        row.addWidget(ctx_frm, 1)
 
-        def _toggle() -> None:
-            self._ctx_open = not self._ctx_open
-            self._ctx_body.setVisible(self._ctx_open)
-            toggle_btn.setText("▲ Gizle" if self._ctx_open else "▼ Göster")
-
-        toggle_btn.clicked.connect(_toggle)
-        self._vl.addWidget(frm)
+        self._vl.addLayout(row)
 
     # ── Event handlers ─────────────────────────────────────────────────────────
 
-    def _on_connect_key(self) -> None:
-        if not self._coach:
-            return
-        key = self._key_input.text().strip()
-        if not key:
-            return
-        ok = self._coach._gemini.configure(key)
-        self._refresh_status()
-        if ok and self._state is not None:
-            self._on_refresh_suggestion()
+    def _on_chip_click(self, text: str) -> None:
+        self._qa_input.setText(text)
+        self._on_ask()
 
     def _on_refresh_suggestion(self) -> None:
         if not self._coach or self._state is None:
@@ -1548,8 +1577,11 @@ class AICoachPage(QScrollArea):
         question = self._qa_input.text().strip()
         if not question:
             return
+        self._resp_frame.setVisible(True)
         self._qa_loading.setVisible(True)
         self._qa_answer.setVisible(False)
+        self._qa_source.setVisible(False)
+        self._ask_btn.setEnabled(False)
         self._coach.answer_question(
             self._state, self._extra, self._ls, question,
             callback=self._on_qa_ready, lb=self._lb,
@@ -1560,6 +1592,7 @@ class AICoachPage(QScrollArea):
             self._hint_lbl.setText("Aktif görev bulunamadı. Önce bir seviyedeki göreve başlayın.")
             self._hint_lbl.setVisible(True)
             return
+        self._hint_btn.setEnabled(False)
         self._coach.get_learning_hint(
             self._state, self._extra, self._ls, self._active_task,
             callback=self._on_hint_ready, lb=self._lb,
@@ -1571,48 +1604,53 @@ class AICoachPage(QScrollArea):
         self._sugg_lbl.setText(text)
         self._sugg_loading.setVisible(False)
         self._refresh_sugg_btn.setEnabled(True)
-        self._sugg_source.setText(_ai_source(bool(self._coach and self._coach.gemini_available)))
+        is_ai = bool(self._coach and self._coach.gemini_available)
+        self._sugg_source.setText("🤖 Gemini" if is_ai else "📋 Kural tabanlı")
 
     def _on_qa_ready(self, text: str) -> None:
         self._qa_loading.setVisible(False)
         self._qa_answer.setText(text)
         self._qa_answer.setVisible(True)
-        self._qa_source.setText(_ai_source(bool(self._coach and self._coach.gemini_available), qa=True))
+        self._ask_btn.setEnabled(True)
+        is_ai = bool(self._coach and self._coach.gemini_available)
+        self._qa_source.setText("🤖 Gemini AI" if is_ai else "📋 Kural tabanlı")
+        self._qa_source.setVisible(True)
 
     def _on_hint_ready(self, text: str) -> None:
         self._hint_lbl.setText(text)
         self._hint_lbl.setVisible(True)
+        self._hint_btn.setEnabled(True)
 
-    # ── Refresh ───────────────────────────────────────────────────────────────
+    # ── Status ────────────────────────────────────────────────────────────────
 
     def _refresh_status(self) -> None:
         if not self._coach:
-            self._status_dot.setStyleSheet(f"color:{_TEXT3}; font-size:14px;")
-            self._status_msg.setText("AI Koç bağlanmadı.")
-            self._key_input.setVisible(True); self._key_btn.setVisible(True)
+            self._status_lbl.setText("● AI bağlı değil")
+            self._status_lbl.setStyleSheet(f"color:{_TEXT3}; font-size:11px;")
             return
         available = self._coach.gemini_available
-        icon      = self._coach._gemini.status_icon
         status    = self._coach.gemini_status
         color     = _GREEN if available else _AMBER
-        self._status_dot.setText(icon)
-        self._status_dot.setStyleSheet(f"color:{color}; font-size:14px;")
-        self._status_msg.setText(status)
-        self._key_input.setVisible(not available)
-        self._key_btn.setVisible(not available)
+        dot       = "●"
+        self._status_lbl.setText(f"{dot}  {status}")
+        self._status_lbl.setStyleSheet(f"color:{color}; font-size:11px; font-weight:600;")
+
+    # ── Refresh ───────────────────────────────────────────────────────────────
 
     def _update_context_display(self, ctx: dict) -> None:
         p    = ctx.get("portfolio", {})
         perf = ctx.get("performance", {})
         risk = ctx.get("risk", {})
-        text = (
-            f"Portföy: TL {p.get('total_value',0):,.0f}  |  Nakit: TL {p.get('cash',0):,.0f}\n"
-            f"K/Z: {perf.get('profit_loss',0):+,.0f} TL ({perf.get('profit_loss_pct',0):+.1f}%)\n"
-            f"Risk: {risk.get('risk_level','—')}  |  {risk.get('asset_count',0)} varlık  |  "
-            f"Max konsantrasyon: %{risk.get('max_concentration_pct',0):.0f}\n"
-            f"Uyarılar: {', '.join(risk.get('warnings',[])) or '—'}"
-        )
-        self._ctx_body.setText(text)
+        lines = [
+            f"Portföy  TL {p.get('total_value', 0):,.0f}   Nakit  TL {p.get('cash', 0):,.0f}",
+            f"K/Z  {perf.get('profit_loss', 0):+,.0f} TL ({perf.get('profit_loss_pct', 0):+.1f}%)",
+            f"Risk  {risk.get('risk_level', '—')}   Varlık  {risk.get('asset_count', 0)}   "
+            f"Maks. %{risk.get('max_concentration_pct', 0):.0f}",
+        ]
+        warnings = risk.get("warnings", [])
+        if warnings:
+            lines.append(f"⚠ {warnings[0]}")
+        self._ctx_body.setText("\n".join(lines))
 
     def refresh(
         self,
@@ -1622,13 +1660,11 @@ class AICoachPage(QScrollArea):
         lb: "object | None" = None,
         auto_suggestion: bool = False,
     ) -> None:
-        """Called by LearnPage.refresh() after every state update."""
         self._state = state
         self._extra = extra
         self._ls    = ls
         self._lb    = lb
 
-        # Find active learning task
         self._active_task = None
         if ls:
             for lvl in ls.levels:
@@ -1642,23 +1678,20 @@ class AICoachPage(QScrollArea):
         task_title = self._active_task.title if self._active_task else "—"
         self._hint_task_lbl.setText(f"Aktif görev: {task_title}")
 
-        # Update context debug panel
         if self._coach and state is not None:
             ctx = self._coach.build_context(state, extra, ls, lb=lb)
             self._update_context_display(ctx)
 
-        # Auto-generate suggestion if requested (e.g. after a trade)
         if auto_suggestion and self._coach and state is not None:
             self._on_refresh_suggestion()
 
         self._refresh_status()
 
     def push_suggestion(self, text: str, is_ai: bool = False) -> None:
-        """Called directly by MainWindow after a trade with the AI response."""
         self._sugg_lbl.setText(text)
         self._sugg_loading.setVisible(False)
         self._refresh_sugg_btn.setEnabled(True)
-        self._sugg_source.setText(_ai_source(is_ai))
+        self._sugg_source.setText("🤖 Gemini" if is_ai else "📋 Kural tabanlı")
 
 
 # ── Main LearnPage ────────────────────────────────────────────────────────────
@@ -1677,6 +1710,13 @@ class LearnPage(QWidget):
         ("🧮", "Araçlar",      "tools"),
         ("🤖", "AI Koç",       "ai_coach"),
     ]
+
+    # Sidebar group labels inserted before these nav indices
+    _NAV_GROUPS = {
+        0: "SEVİYELER",
+        3: "TAKİP",
+        7: "ARAÇLAR",
+    }
 
     def __init__(
         self,
@@ -1768,7 +1808,7 @@ class LearnPage(QWidget):
         # Advanced task badge
         task_badge = QLabel("🚀 İleri Görev: Hesaplayıcıları Kullan")
         task_badge.setStyleSheet(
-            f"color:{_PURPLE}; background:{_PURPLE}11; border:1px solid {_PURPLE}44; "
+            f"color:{_ACCENT}; background:{_ACCENT}11; border:1px solid {_ACCENT}44; "
             f"border-radius:6px; font-size:11px; font-weight:700; padding:4px 12px;"
         )
         hdr.addWidget(task_badge)
@@ -1839,22 +1879,24 @@ class LearnPage(QWidget):
 
         self._nav_btns: list[QPushButton] = []
         for i, (icon, label, _key) in enumerate(self._NAV_ITEMS):
+            if i in self._NAV_GROUPS:
+                if i > 0:
+                    vl.addSpacing(4)
+                grp_lbl = QLabel(f"  {self._NAV_GROUPS[i]}")
+                grp_lbl.setStyleSheet(
+                    f"color:{_TEXT3}; font-size:9px; font-weight:700; "
+                    f"letter-spacing:1.5px; padding:6px 0 2px 0;"
+                )
+                vl.addWidget(grp_lbl)
+
             btn = QPushButton(f"  {icon}  {label}")
             btn.setObjectName("learnNavBtn")
             btn.setCheckable(True)
-            btn.setFixedHeight(46)
+            btn.setFixedHeight(40)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.clicked.connect(lambda _c, idx=i: self._switch_section(idx))
             self._nav_btns.append(btn)
             vl.addWidget(btn)
-
-            # Separator before achievements
-            if label == "İleri":
-                vl.addSpacing(4)
-                sep = _sep()
-                sep.setStyleSheet(f"color:{_BORDER}; background:{_BORDER}; margin:0 12px;")
-                vl.addWidget(sep)
-                vl.addSpacing(4)
 
         vl.addStretch()
 
@@ -1942,7 +1984,7 @@ class LearnPage(QWidget):
             meta[0],
             "Seviye Atladın!",
             f"Tebrikler! '{meta[1]}' seviyesine ulaştın. Yeni görevler açıldı!",
-            _PURPLE,
+            _ACCENT,
         )
 
     def _on_level_complete(self, level: object) -> None:
@@ -1965,7 +2007,7 @@ class LearnPage(QWidget):
         """Forward an AI suggestion (from MainWindow) to the AI Coach panel."""
         self._ai_coach_page.push_suggestion(text, is_ai=is_ai)
         if is_ai:
-            self._show_toast("🤖", "AI Koç Önerisi", text, _CYAN)
+            self._show_toast("🤖", "AI Koç Önerisi", text, _ACCENT)
 
     def _show_toast(self, icon: str, title: str, body: str, color: str) -> None:
         toast = ToastNotification(self, icon, title, body, color)
