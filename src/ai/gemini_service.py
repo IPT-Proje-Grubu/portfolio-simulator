@@ -16,6 +16,8 @@ import json
 import os
 from PyQt6.QtCore import QThread, pyqtSignal
 
+from src.ui.i18n import lang_manager
+
 # ── System instruction (shared across all prompt types) ───────────────────────
 
 _SYSTEM_INSTRUCTION = (
@@ -106,7 +108,7 @@ class GeminiService:
 
     def _init_model(self) -> None:
         if not self._api_key:
-            self._error_msg = "API anahtarı bulunamadı. .env dosyasına GEMINI_API_KEY ekleyin."
+            self._error_msg = lang_manager.tr("API anahtarı bulunamadı. .env dosyasına GEMINI_API_KEY ekleyin.")
             return
         try:
             from google import genai  # type: ignore[import]
@@ -116,9 +118,9 @@ class GeminiService:
             self._genai_types = types
             self._available = True
         except ImportError:
-            self._error_msg = "google-genai paketi yüklü değil."
+            self._error_msg = lang_manager.tr("google-genai paketi yüklü değil.")
         except Exception as exc:
-            self._error_msg = f"Model başlatılamadı: {exc}"
+            self._error_msg = lang_manager.tr("Model başlatılamadı: {exc}").format(exc=exc)
 
     def configure(self, api_key: str) -> bool:
         """Re-initialise with a new API key."""
@@ -138,8 +140,8 @@ class GeminiService:
     @property
     def status_message(self) -> str:
         if self._available:
-            return f"Gemini {self.MODEL_NAME} bağlı"
-        return self._error_msg if self._error_msg else "Bağlantı yok"
+            return lang_manager.tr("Gemini {model} bağlı").format(model=self.MODEL_NAME)
+        return self._error_msg if self._error_msg else lang_manager.tr("Bağlantı yok")
 
     @property
     def status_icon(self) -> str:

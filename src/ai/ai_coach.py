@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any, Callable
 
 from src.ai.context_builder import ContextBuilder
 from src.ai.gemini_service import GeminiService, GeminiWorker
+from src.ui.i18n import lang_manager
 
 if TYPE_CHECKING:
     from src.learning.manager import LearningManager
@@ -45,31 +46,36 @@ class _RuleEngine:
         pnl      = perf["profit_loss"]
 
         if n_assets == 0:
-            return "Portföyünüz henüz boş. İşlem sayfasından ilk varlığınızı alın."
+            return lang_manager.tr("Portföyünüz henüz boş. İşlem sayfasından ilk varlığınızı alın.")
         if max_conc > 70:
-            return (
-                f"{sym} portföyünüzün %{max_conc:.0f}'ini oluşturuyor. "
-                f"ETH veya AAPL gibi farklı bir varlık alarak riski %50'nin altına çekin."
-            )
+            return lang_manager.tr(
+                "{sym} portföyünüzün %{max_conc:.0f}'ini oluşturuyor. "
+                "ETH veya AAPL gibi farklı bir varlık alarak riski %50'nin altına çekin."
+            ).format(sym=sym, max_conc=max_conc)
         if n_assets == 1:
-            return (
-                f"Tek varlık (%{max_conc:.0f} {sym}) riski yüksek. "
-                f"En az 2 farklı varlık daha eklemeyi hedefleyin."
-            )
+            return lang_manager.tr(
+                "Tek varlık (%{max_conc:.0f} {sym}) riski yüksek. "
+                "En az 2 farklı varlık daha eklemeyi hedefleyin."
+            ).format(max_conc=max_conc, sym=sym)
         if pnl > 0 and perf["total_trades"] >= 3:
-            return (
-                f"Portföyünüz {pnl:+,.0f} TL kârda. "
-                f"Kâr realizasyonu için en yüksek kazançlı pozisyonu değerlendirin."
-            )
+            return lang_manager.tr(
+                "Portföyünüz {pnl:+,.0f} TL kârda. "
+                "Kâr realizasyonu için en yüksek kazançlı pozisyonu değerlendirin."
+            ).format(pnl=pnl)
         if pnl < -p["starting_balance"] * 0.05:
-            return (
-                f"Portföy %{abs(perf['profit_loss_pct']):.1f} zararda. "
-                f"Çeşitlendirme ile kalan riski azaltın."
-            )
+            return lang_manager.tr(
+                "Portföy %{abs_pct:.1f} zararda. Çeşitlendirme ile kalan riski azaltın."
+            ).format(abs_pct=abs(perf['profit_loss_pct']))
+        
         action = context.get("user_action", "")
         if action:
-            return f"İşlem tamamlandı. Portföy durumu: {risk['risk_level']} risk, {n_assets} varlık."
-        return f"Portföy: {n_assets} varlık | Risk: {risk['risk_level']} | K/Z: {pnl:+,.0f} TL."
+            return lang_manager.tr("İşlem tamamlandı. Portföy durumu: {risk_level} risk, {n_assets} varlık.").format(
+                risk_level=risk['risk_level'], n_assets=n_assets
+            )
+            
+        return lang_manager.tr("Portföy: {n_assets} varlık | Risk: {risk_level} | K/Z: {pnl:+,.0f} TL.").format(
+            n_assets=n_assets, risk_level=risk['risk_level'], pnl=pnl
+        )
 
     def qa_answer(self, context: dict, question: str) -> str:
         q    = question.lower()
@@ -80,55 +86,70 @@ class _RuleEngine:
 
         if any(kw in q for kw in ["risk", "tehlike", "güvenli", "danger"]):
             sym = risk.get("max_concentration_asset", "")
-            return (
-                f"Risk seviyeniz: {risk['risk_level']} "
-                f"(%{risk['max_concentration_pct']:.0f} {sym} konsantrasyonu). "
-                f"Hedef: hiçbir varlık %50'yi geçmesin."
-            )
+            return lang_manager.tr(
+                "Risk seviyeniz: {risk_level} "
+                "(%{max_conc:.0f} {sym} konsantrasyonu). "
+                "Hedef: hiçbir varlık %50'yi geçmesin."
+            ).format(risk_level=risk['risk_level'], max_conc=risk['max_concentration_pct'], sym=sym)
+            
         if any(kw in q for kw in ["kâr", "kar", "kazanç", "profit", "zarar", "loss"]):
-            return (
-                f"Toplam K/Z: {perf['profit_loss']:+,.0f} TL ({perf['profit_loss_pct']:+.1f}%). "
-                f"Gerçekleşmiş: {perf['realized_pnl']:+,.0f} TL | "
-                f"Gerçekleşmemiş: {perf['unrealized_pnl']:+,.0f} TL."
+            return lang_manager.tr(
+                "Toplam K/Z: {pnl:+,.0f} TL ({pnl_pct:+.1f}%). "
+                "Gerçekleşmiş: {realized:+,.0f} TL | "
+                "Gerçekleşmemiş: {unrealized:+,.0f} TL."
+            ).format(
+                pnl=perf['profit_loss'], 
+                pnl_pct=perf['profit_loss_pct'], 
+                realized=perf['realized_pnl'], 
+                unrealized=perf['unrealized_pnl']
             )
+            
         if any(kw in q for kw in ["çeşitlend", "diversif", "varlık", "asset"]):
-            return (
-                f"Portföyünüzde {risk['asset_count']} farklı varlık var. "
-                f"5+ farklı varlık için ideal dağılım; her biri %30 altında tutulmalı."
-            )
+            return lang_manager.tr(
+                "Portföyünüzde {asset_count} farklı varlık var. "
+                "5+ farklı varlık için ideal dağılım; her biri %30 altında tutulmalı."
+            ).format(asset_count=risk['asset_count'])
+            
         if any(kw in q for kw in ["ne alayım", "öner", "al ", "buy", "öneri"]):
             sym = risk.get("max_concentration_asset", "")
-            return (
-                f"En az yatırım yaptığınız sektörü araştırın. "
-                f"{'Kripto ağırlıklı portföyünüze hisse veya emtia ekleyin.' if sym in ('BTC','ETH') else 'Mevcut portföy dağılımınıza göre kripto veya emtia değerlendirin.'}"
-            )
+            ek = lang_manager.tr("Kripto ağırlıklı portföyünüze hisse veya emtia ekleyin.") if sym in ('BTC','ETH') else lang_manager.tr("Mevcut portföy dağılımınıza göre kripto veya emtia değerlendirin.")
+            return lang_manager.tr("En az yatırım yaptığınız sektörü araştırın. {ek}").format(ek=ek)
+            
         if any(kw in q for kw in ["görev", "task", "öğren", "learn"]):
             task = learn.get("current_task", "")
-            return (
-                f"Şu anki görev: '{task or 'tümü tamamlandı'}'. "
-                f"Seviye: {learn.get('current_level','')} | XP: {learn.get('xp',0)}."
+            return lang_manager.tr(
+                "Şu anki görev: '{task}'. Seviye: {lvl} | XP: {xp}."
+            ).format(
+                task=task or lang_manager.tr('tümü tamamlandı'), 
+                lvl=learn.get('current_level',''), 
+                xp=learn.get('xp',0)
             )
-        return (
-            f"Portföy: TL {p['total_value']:,.0f} | "
-            f"K/Z: {perf['profit_loss']:+,.0f} TL | "
-            f"Risk: {risk['risk_level']} | {risk['asset_count']} varlık."
+            
+        return lang_manager.tr(
+            "Portföy: TL {val:,.0f} | K/Z: {pnl:+,.0f} TL | "
+            "Risk: {risk_level} | {asset_count} varlık."
+        ).format(
+            val=p['total_value'], 
+            pnl=perf['profit_loss'], 
+            risk_level=risk['risk_level'], 
+            asset_count=risk['asset_count']
         )
 
     def learning_hint(self, context: dict, task: "Task") -> str:
         _hints: dict[str, str] = {
-            "buy_first_asset":       "İşlem (⇄) sayfasına git ve piyasa listesinden bir satıra tıkla.",
-            "buy_with_amount":       "'Maksimum' butonuyla nakit bakiyenin büyük bir kısmını kullan.",
-            "view_portfolio_summary":"Sol menüden '◎ Özet' simgesine tıkla.",
-            "view_trade_history":    "Sol menüden '≡ Geçmiş' simgesine tıkla.",
-            "first_sell":            "İşlem sayfasında SATIŞ moduna geç, Pozisyonlar tablosundan 'Kapat' butonu.",
-            "diversify_portfolio":   "3 farklı sektörden varlık al: kripto, hisse, emtia.",
-            "risk_under_50":         "Özet sayfasında portföy dağılımını kontrol et.",
-            "profitable_trade":      "Pozisyonlar tablosunda yeşil K/Z gösteren varlığı sat.",
-            "run_scenario_analysis": "Analiz sayfasında tarih seç → '▶ Senaryo Simülasyonu' butonu.",
-            "check_forecast":        "Senaryo çalıştırdıktan sonra Analiz sayfasındaki tahmin tablosunu incele.",
+            "buy_first_asset":       lang_manager.tr("İşlem (⇄) sayfasına git ve piyasa listesinden bir satıra tıkla."),
+            "buy_with_amount":       lang_manager.tr("'Maksimum' butonuyla nakit bakiyenin büyük bir kısmını kullan."),
+            "view_portfolio_summary":lang_manager.tr("Sol menüden '◎ Özet' simgesine tıkla."),
+            "view_trade_history":    lang_manager.tr("Sol menüden '≡ Geçmiş' simgesine tıkla."),
+            "first_sell":            lang_manager.tr("İşlem sayfasında SATIŞ moduna geç, Pozisyonlar tablosundan 'Kapat' butonu."),
+            "diversify_portfolio":   lang_manager.tr("3 farklı sektörden varlık al: kripto, hisse, emtia."),
+            "risk_under_50":         lang_manager.tr("Özet sayfasında portföy dağılımını kontrol et."),
+            "profitable_trade":      lang_manager.tr("Pozisyonlar tablosunda yeşil K/Z gösteren varlığı sat."),
+            "run_scenario_analysis": lang_manager.tr("Analiz sayfasında tarih seç → '▶ Senaryo Simülasyonu' butonu."),
+            "check_forecast":        lang_manager.tr("Senaryo çalıştırdıktan sonra Analiz sayfasındaki tahmin tablosunu incele."),
         }
         hint = _hints.get(task.id, task.hint.split("→")[0].strip()[:100])
-        return f"İpucu: {hint}"
+        return lang_manager.tr("İpucu: {hint}").format(hint=hint)
 
 
 # ── AICoach ───────────────────────────────────────────────────────────────────

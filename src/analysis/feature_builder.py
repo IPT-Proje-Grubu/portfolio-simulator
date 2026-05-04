@@ -6,6 +6,7 @@ import numpy as np  # type: ignore[import-untyped]
 import pandas as pd  # type: ignore[import-untyped]
 
 from src.data_processing.data_loader import LoadedDataset
+from src.ui.i18n import lang_manager
 
 
 @dataclass
@@ -62,7 +63,7 @@ class FeatureBuilder:
         if close_col is None and loaded.price_columns:
             close_col = loaded.price_columns[0]
         if close_col is None:
-            raise ValueError("Fiyat sütunu bulunamadı; feature hesaplanamaz.")
+            raise ValueError(lang_manager.tr("Fiyat sütunu bulunamadı; feature hesaplanamaz."))
 
         close = df[close_col].astype(float)
 

@@ -11,6 +11,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from src.ui.i18n import LANG_EN, apply_language_to_widget, lang_manager
 
 _BG     = "#0b0f1a"
 _SURF   = "#111827"
@@ -27,11 +28,13 @@ class WelcomeDialog(QDialog):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.go_learn = False
-        self.setWindowTitle("PortfolioSim — Hoş Geldiniz")
+        self.setWindowTitle(lang_manager.tr("PortfolioSim — Hoş Geldiniz"))
         self.setFixedSize(620, 580)
         self.setModal(True)
         self._build()
         self._style()
+        lang_manager.subscribe(lambda _lang: self._apply_language())
+        self._apply_language()
 
     def _build(self) -> None:
         vl = QVBoxLayout(self)
@@ -132,6 +135,9 @@ class WelcomeDialog(QDialog):
 
         self.btn_learn.clicked.connect(self._on_learn)
         self.btn_start.clicked.connect(self.accept)
+        self._header = header
+        self._sub = sub
+        self._notice = notice
 
     def _on_learn(self) -> None:
         self.go_learn = True
@@ -163,3 +169,25 @@ class WelcomeDialog(QDialog):
         }}
         QPushButton#btnLearn:hover {{ background: #1a140a; border-color: {_AMBER}; }}
         """)
+
+    def _apply_language(self) -> None:
+        self.setWindowTitle(lang_manager.tr("PortfolioSim — Hoş Geldiniz"))
+        if lang_manager.language == LANG_EN:
+            self._header.setText("◆  Welcome to PortfolioSim!")
+            self._sub.setText(
+                "A simulation environment designed to learn crypto investing "
+                "without risking real money."
+            )
+            self._notice.setText("💰  Your starting balance: TL 1,000,000  —  fully virtual, practice freely!")
+            self.btn_learn.setText("📚  Open Learn Page")
+            self.btn_start.setText("Start  →")
+        else:
+            self._header.setText("◆  PortfolioSim'e Hoş Geldiniz!")
+            self._sub.setText(
+                "Kripto para yatırımlarını gerçek para riski olmadan öğrenmek için "
+                "tasarlanmış bir simülasyon ortamı."
+            )
+            self._notice.setText("💰  Başlangıç bakiyeniz: TL 1.000.000  —  tamamen sanal, dilediğinizce deneyin!")
+            self.btn_learn.setText("📚  Öğren Sayfasını Aç")
+            self.btn_start.setText("Başla  →")
+        apply_language_to_widget(self, lang_manager.language)

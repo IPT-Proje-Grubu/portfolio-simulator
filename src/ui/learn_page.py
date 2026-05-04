@@ -32,6 +32,7 @@ from src.education.widgets import (
     PortfolioAllocationWidget,
     TradingFlowWidget,
 )
+from src.ui.i18n import apply_language_to_widget, lang_manager
 
 # Backwards-compat aliases — existing code below uses these names unchanged
 LearningSystem = LearningManager
@@ -195,9 +196,7 @@ class XPHeaderBar(QFrame):
         )
         ratio = curr_xp / level_xp if level_xp > 0 else 1.0
         self._xp_bar.set_ratio(ratio)
-        self._bar_label.setText(
-            f"SEVİYE İLERLEMESİ  —  {curr_xp} / {level_xp} XP"
-        )
+        self._bar_label.setText(lang_manager.tr("SEVİYE İLERLEMESİ  —  {curr_xp} / {level_xp} XP").format(curr_xp=curr_xp, level_xp=level_xp))
         self._xp_label.setText(f"⚡ {total_xp} XP")
         self._xp_label.setStyleSheet(
             f"color:{_AMBER}; font-size:14px; font-weight:800;"
@@ -483,15 +482,12 @@ class LevelPage(QScrollArea):
         lock_icon = QLabel("🔒")
         lock_icon.setStyleSheet("font-size:32px;")
         lock_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lock_title = QLabel(f"{meta[1]} seviyesi kilitli")
+        lock_title = QLabel(lang_manager.tr("{level} seviyesi kilitli").format(level=lang_manager.tr(meta[1])))
         lock_title.setStyleSheet(f"color:{_TEXT}; font-size:15px; font-weight:700;")
         lock_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         prev_idx = ls.LEVEL_ORDER.index(level)
         prev_level_name = ls.LEVEL_META[ls.LEVEL_ORDER[prev_idx - 1]][1] if prev_idx > 0 else ""
-        lock_desc = QLabel(
-            f"Bu seviyeyi açmak için '{prev_level_name}' seviyesindeki "
-            f"tüm görevleri tamamla ve yeterli XP kazan."
-        )
+        lock_desc = QLabel(lang_manager.tr("Bu seviyeyi açmak için '{prev}' seviyesindeki tüm görevleri tamamla ve yeterli XP kazan.").format(prev=lang_manager.tr(prev_level_name)))
         lock_desc.setStyleSheet(f"color:{_TEXT2}; font-size:12px;")
         lock_desc.setWordWrap(True)
         lock_desc.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -520,7 +516,7 @@ class LevelPage(QScrollArea):
         level_xp = sum(t.xp for t in tasks if ls.is_task_complete(t.id))
         total_xp = sum(t.xp for t in tasks)
         self._level_xp_lbl.setText(f"⚡ {level_xp} / {total_xp} XP")
-        self._prog_lbl.setText(f"{n_done} / {n_total} görev tamamlandı")
+        self._prog_lbl.setText(lang_manager.tr("{done} / {total} görev tamamlandı").format(done=n_done, total=n_total))
         self._prog_bar.set_ratio(n_done / n_total if n_total > 0 else 0.0)
 
         self._locked_overlay.setVisible(not level_unlocked)
@@ -641,11 +637,11 @@ class AchievementsPage(QScrollArea):
             icon = QLabel(ach.icon)
             icon.setFixedWidth(24)
             row.addWidget(icon)
-            title_lbl = QLabel(f"<b>{ach.title}</b>")
+            title_lbl = QLabel(f"<b>{lang_manager.tr(ach.title)}</b>")
             title_lbl.setStyleSheet(f"color:{_TEXT}; font-size:12px;")
             row.addWidget(title_lbl)
             row.addWidget(QLabel("—"))
-            desc_lbl = QLabel(ach.desc)
+            desc_lbl = QLabel(lang_manager.tr(ach.desc))
             desc_lbl.setStyleSheet(f"color:{_TEXT2}; font-size:11px;")
             row.addWidget(desc_lbl, 1)
             xp_lbl = QLabel(f"+{ach.xp} XP")
@@ -658,7 +654,7 @@ class AchievementsPage(QScrollArea):
     def refresh(self) -> None:
         unlocked = sum(1 for a in self._ls.achievements if a.unlocked)
         total    = len(self._ls.achievements)
-        self._count_lbl.setText(f"{unlocked} / {total} kazanıldı")
+        self._count_lbl.setText(lang_manager.tr("{count} / {total} kazanıldı").format(count=unlocked, total=total))
         for ach in self._ls.achievements:
             card = self._ach_cards.get(ach.id)
             if card:
@@ -690,16 +686,16 @@ class ChallengeCard(QFrame):
 
         mid = QVBoxLayout()
         mid.setSpacing(4)
-        self._title_lbl = QLabel(self._ch.title)
+        self._title_lbl = QLabel(lang_manager.tr(self._ch.title))
         self._title_lbl.setStyleSheet(f"color:{_TEXT}; font-size:14px; font-weight:800;")
-        self._desc_lbl = QLabel(self._ch.desc)
+        self._desc_lbl = QLabel(lang_manager.tr(self._ch.desc))
         self._desc_lbl.setStyleSheet(f"color:{_TEXT2}; font-size:12px;")
         self._desc_lbl.setWordWrap(True)
         req_row = QHBoxLayout()
         req_row.setSpacing(6)
         req_icon = QLabel("📋")
         req_icon.setStyleSheet("font-size:12px;")
-        self._req_lbl = QLabel(self._ch.requirement)
+        self._req_lbl = QLabel(lang_manager.tr(self._ch.requirement))
         self._req_lbl.setStyleSheet(f"color:{_TEXT3}; font-size:11px;")
         req_row.addWidget(req_icon)
         req_row.addWidget(self._req_lbl)
@@ -783,7 +779,7 @@ class ChallengesPage(QScrollArea):
     def refresh(self) -> None:
         done  = sum(1 for c in self._ls.challenges if c.completed)
         total = len(self._ls.challenges)
-        self._count_lbl.setText(f"{done} / {total} tamamlandı")
+        self._count_lbl.setText(lang_manager.tr("{done} / {total} tamamlandı").format(done=done, total=total))
         for ch in self._ls.challenges:
             card = self._ch_cards.get(ch.id)
             if card:
@@ -1064,7 +1060,7 @@ class LeaderboardPage(QScrollArea):
         entries = self._lb.get_top_10()
         rank    = self._lb.current_rank()
         total   = self._lb.entry_count
-        self._sub_lbl.setText(f"{total} kayıtlı oturum — en yüksek K/Z'a göre sıralandı")
+        self._sub_lbl.setText(lang_manager.tr("{total} kayıtlı oturum — en yüksek K/Z'a göre sıralandı").format(total=total))
 
         if current_entry:
             color = _GREEN if current_entry.total_pnl >= 0 else _RED
@@ -1642,10 +1638,13 @@ class AICoachPage(QScrollArea):
         perf = ctx.get("performance", {})
         risk = ctx.get("risk", {})
         lines = [
-            f"Portföy  TL {p.get('total_value', 0):,.0f}   Nakit  TL {p.get('cash', 0):,.0f}",
-            f"K/Z  {perf.get('profit_loss', 0):+,.0f} TL ({perf.get('profit_loss_pct', 0):+.1f}%)",
-            f"Risk  {risk.get('risk_level', '—')}   Varlık  {risk.get('asset_count', 0)}   "
-            f"Maks. %{risk.get('max_concentration_pct', 0):.0f}",
+            lang_manager.tr("Portföy  TL {pv:,.0f}   Nakit  TL {cash:,.0f}").format(pv=p.get('total_value', 0), cash=p.get('cash', 0)),
+            lang_manager.tr("K/Z  {pnl:+,.0f} TL ({pnl_pct:+.1f}%)").format(pnl=perf.get('profit_loss', 0), pnl_pct=perf.get('profit_loss_pct', 0)),
+            lang_manager.tr("Risk  {risk}   Varlık  {assets}   Maks. %{max_conc:.0f}").format(
+                risk=lang_manager.tr(risk.get('risk_level', 'Belirsiz')), 
+                assets=risk.get('asset_count', 0), 
+                max_conc=risk.get('max_concentration_pct', 0)
+            ),
         ]
         warnings = risk.get("warnings", [])
         if warnings:
@@ -1675,8 +1674,8 @@ class AICoachPage(QScrollArea):
                     self._active_task = t
                     break
 
-        task_title = self._active_task.title if self._active_task else "—"
-        self._hint_task_lbl.setText(f"Aktif görev: {task_title}")
+        task_title = lang_manager.tr(self._active_task.title) if self._active_task else "—"
+        self._hint_task_lbl.setText(lang_manager.tr("Aktif görev: {task}").format(task=task_title))
 
         if self._coach and state is not None:
             ctx = self._coach.build_context(state, extra, ls, lb=lb)
@@ -1700,16 +1699,16 @@ class LearnPage(QWidget):
     """Fully interactive, task-based learning mode page."""
 
     _NAV_ITEMS = [
-        ("🌱", "Başlangıç",    "beginner"),
-        ("📈", "Orta",         "intermediate"),
-        ("🚀", "İleri",        "advanced"),
-        ("🏆", "Başarımlar",   "achievements"),
-        ("⚡", "Zorluklar",    "challenges"),
-        ("📊", "Analizlerim",  "analytics"),
-        ("🏅", "Liderlik",     "leaderboard"),
-        ("🧮", "Araçlar",      "tools"),
-        ("🤖", "AI Koç",       "ai_coach"),
-    ]
+            ("🌱", lang_manager.tr("Başlangıç"), "level_beginner"),
+            ("🔒", lang_manager.tr("Orta"), "level_medium"),
+            ("🔒", lang_manager.tr("İleri"), "level_advanced"),
+            ("🏆", lang_manager.tr("Başarımlar"), "achievements"),
+            ("⚡", lang_manager.tr("Zorluklar"), "challenges"),
+            ("📊", lang_manager.tr("Analizlerim"), "analytics"),
+            ("🏅", lang_manager.tr("Liderlik"), "leaderboard"),
+            ("🧮", lang_manager.tr("Araçlar"), "tools"),
+            ("🤖", lang_manager.tr("AI Koç"), "ai_coach")
+        ]
 
     # Sidebar group labels inserted before these nav indices
     _NAV_GROUPS = {
@@ -1740,6 +1739,8 @@ class LearnPage(QWidget):
         self._current_state: object = None
         self._build()
         self._setup_callbacks()
+        lang_manager.subscribe(lambda _lang: self._apply_language())
+        self._apply_language()
 
     # ── Build ──────────────────────────────────────────────────────────────────
 
@@ -1872,7 +1873,7 @@ class LearnPage(QWidget):
         vl.setContentsMargins(0, 0, 0, 0)
         vl.setSpacing(0)
 
-        hdr = QLabel("  🎓  Öğrenme Modu")
+        hdr = QLabel(f"  🎓  {lang_manager.tr('Öğrenme Modu')}")
         hdr.setObjectName("learnHeader")
         hdr.setFixedHeight(50)
         vl.addWidget(hdr)
@@ -1882,14 +1883,19 @@ class LearnPage(QWidget):
             if i in self._NAV_GROUPS:
                 if i > 0:
                     vl.addSpacing(4)
-                grp_lbl = QLabel(f"  {self._NAV_GROUPS[i]}")
+                # Grup başlıklarını çevir:
+                grp_lbl = QLabel(f"  {lang_manager.tr(self._NAV_GROUPS[i])}")
                 grp_lbl.setStyleSheet(
                     f"color:{_TEXT3}; font-size:9px; font-weight:700; "
                     f"letter-spacing:1.5px; padding:6px 0 2px 0;"
                 )
                 vl.addWidget(grp_lbl)
 
-            btn = QPushButton(f"  {icon}  {label}")
+            # LABEL'I TEMİZLE VE ÖYLE ÇEVİR (Boşluk kurbanı olmamak için)
+            temiz_label = label.strip() 
+            cevrilmis_label = lang_manager.tr(temiz_label)
+            
+            btn = QPushButton(f"  {icon}  {cevrilmis_label}")
             btn.setObjectName("learnNavBtn")
             btn.setCheckable(True)
             btn.setFixedHeight(40)
@@ -1957,10 +1963,15 @@ class LearnPage(QWidget):
     # ── Callbacks from LearningSystem ──────────────────────────────────────────
 
     def _on_task_complete(self, task: TaskSpec, xp: int) -> None:
+        body = (
+            f"'{task.title}' görevini başarıyla tamamladın. Harika iş!"
+            if lang_manager.language == "tr"
+            else f"You completed '{task.title}' successfully. Great job!"
+        )
         self._show_toast(
             task.icon,
-            f"Görev Tamamlandı! +{xp} XP",
-            f"'{task.title}' görevini başarıyla tamamladın. Harika iş!",
+            f"{lang_manager.tr('Görev Tamamlandı! +')}{xp} XP",
+            body,
             _GREEN,
         )
         # Flash the task card
@@ -1971,19 +1982,29 @@ class LearnPage(QWidget):
                 tw.flash_success()
 
     def _on_achievement_unlock(self, ach: Achievement) -> None:
+        body = (
+            f"'{ach.title}' başarımını kazandın — {ach.desc}"
+            if lang_manager.language == "tr"
+            else f"You unlocked '{ach.title}' — {ach.desc}"
+        )
         self._show_toast(
             ach.icon,
-            f"Başarım Kazanıldı! +{ach.xp} XP",
-            f"'{ach.title}' başarımını kazandın — {ach.desc}",
+            f"{lang_manager.tr('Başarım Kazanıldı! +')}{ach.xp} XP",
+            body,
             _AMBER,
         )
 
     def _on_level_up(self, new_level: str) -> None:
         meta = self._ls.LEVEL_META.get(new_level, ("🎉", new_level))
+        body = (
+            f"Tebrikler! '{meta[1]}' seviyesine ulaştın. Yeni görevler açıldı!"
+            if lang_manager.language == "tr"
+            else f"Congrats! You reached '{meta[1]}' level. New tasks unlocked!"
+        )
         self._show_toast(
             meta[0],
-            "Seviye Atladın!",
-            f"Tebrikler! '{meta[1]}' seviyesine ulaştın. Yeni görevler açıldı!",
+            lang_manager.tr("Seviye Atladın!"),
+            body,
             _ACCENT,
         )
 
@@ -2046,3 +2067,9 @@ class LearnPage(QWidget):
             meta   = self._ls.LEVEL_META[key]
             prefix = "  🔒" if locked else f"  {meta[0]}"
             btn.setText(f"{prefix}  {meta[1]}")
+
+    def _apply_language(self) -> None:
+        apply_language_to_widget(self, lang_manager.language)
+        if hasattr(self, "_nav_btns"): # Butonların tutulduğu listeye göre adını değiştir gerekirse
+            for btn, (icon, label, _key) in zip(self._nav_btns, self._NAV_ITEMS):
+                btn.setText(f"  {icon}  {lang_manager.tr(label)}")

@@ -20,6 +20,8 @@ from PyQt6.QtWidgets import (
 
 from src.education.content import ASSET_INFO, TUTORIAL_STEPS
 
+from src.ui.i18n import lang_manager
+
 
 _BG     = "#0b0f1a"
 _SURF   = "#111827"
@@ -182,17 +184,17 @@ class PLCalculatorWidget(QWidget):
         self.val_lbl.setText(f"Güncel Değer: TL {value:,.2f}")
 
         if abs(pct) < 0.01:
-            note = "Fiyat değişmedi — K/Z sıfır."
+            note = lang_manager.tr("Fiyat değişmedi — K/Z sıfır.")
         elif pct > 0:
-            note = (
-                f"Formül: ({cur:,.0f} − {buy:,.0f}) × {qty:.4g} = +TL {pl:,.0f}\n"
-                f"Her 100 TL yatırım için {pct:.1f} TL kazandınız."
-            )
+            note = lang_manager.tr(
+                "Formül: ({cur:,.0f} − {buy:,.0f}) × {qty:.4g} = +TL {pl:,.0f}\n"
+                "Her 100 TL yatırım için {pct:.1f} TL kazandınız."
+            ).format(cur=cur, buy=buy, qty=qty, pl=pl, pct=pct)
         else:
-            note = (
-                f"Formül: ({cur:,.0f} − {buy:,.0f}) × {qty:.4g} = TL {pl:,.0f}\n"
+            note = lang_manager.tr(
+                "Formül: ({cur:,.0f} − {buy:,.0f}) × {qty:.4g} = TL {pl:,.0f}\n"
                 "Değer düştü — ama satmadıkça bu 'kâğıt üzerinde' bir kayıptır."
-            )
+            ).format(cur=cur, buy=buy, qty=qty, pl=pl)
         self.formula_lbl.setText(note)
 
     def set_price(self, buy: float, cur: float) -> None:
@@ -616,7 +618,7 @@ class DCASimulatorWidget(QWidget):
 
     def _on_slide(self) -> None:
         self.sl_amt_lbl.setText(f"TL {self.sl_amt.value():,}")
-        self.sl_mo_lbl.setText(f"{self.sl_mo.value()} Ay")
+        self.sl_mo_lbl.setText(lang_manager.tr("{val} Ay").format(val=self.sl_mo.value()))
         self._simulate()
 
     def _simulate(self) -> None:
@@ -680,15 +682,15 @@ class DCASimulatorWidget(QWidget):
         self._chart.set_data(prices, dca_vals, lump_vals)
 
         if dca_final > lump_final:
-            self.insight.setText(
-                f"✅  Bu senaryoda DCA daha iyi! Ortalama maliyetinizi TL {dca_avg:,.0f}'a düşürdünüz. "
-                f"Toplu alım maliyeti TL {prices[0]:,.0f}'da kaldı."
-            )
+            self.insight.setText(lang_manager.tr(
+                "✅  Bu senaryoda DCA daha iyi! Ortalama maliyetinizi TL {dca_avg:,.0f}'a düşürdünüz. "
+                "Toplu alım maliyeti TL {prices0:,.0f}'da kaldı."
+            ).format(dca_avg=dca_avg, prices0=prices[0]))
         else:
-            self.insight.setText(
+            self.insight.setText(lang_manager.tr(
                 "ℹ️  Bu senaryoda fiyat genel olarak yükseldiği için toplu alım daha iyi göründü. "
                 "Gerçekte piyasanın yönünü önceden bilmek çok zordur — DCA bu belirsizliği azaltır."
-            )
+            ))
 
 
 class _DCAChart(QWidget):
@@ -740,9 +742,9 @@ class _DCAChart(QWidget):
         f.setBold(True)
         p.setFont(f)
         p.setPen(QColor(_ACCENT))
-        p.drawText(10, self.height() - 6, "─── DCA (Aylık Alım)")
+        p.drawText(10, self.height() - 6, lang_manager.tr("─── DCA (Aylık Alım)"))
         p.setPen(QColor(_AMBER))
-        p.drawText(200, self.height() - 6, "─── Toplu Alım")
+        p.drawText(200, self.height() - 6, lang_manager.tr("─── Toplu Alım"))
         p.end()
 
 

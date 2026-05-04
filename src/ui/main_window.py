@@ -45,7 +45,10 @@ from src.portfolio import HistoricalPriceFeed
 from src.portfolio.portfolio import PortfolioState
 from src.ui.learn_page import LearnPage
 from src.ui.welcome_dialog import WelcomeDialog
+from src.ui.i18n import LANG_EN, LANG_TR, apply_language_to_widget, lang_manager
 from src.visualization.charts import ChartPlaceholder
+
+from src.ui.i18n import lang_manager
 
 # ── palette ───────────────────────────────────────────────────────────────────
 _BG      = "#0b0f1a"
@@ -132,31 +135,16 @@ def _risk_from_volatility(volatility: float) -> dict:
     vol_pct = volatility * 100
 
     if vol_pct < 1:
-        return {
-            "label": "Düşük",
-            "color": _GREEN,
-            "detail": f"{vol_pct:.2f}% oynaklık",
-        }
+        return {"label": "Düşük", "color": _GREEN, "detail": lang_manager.tr("{vol_pct:.2f}% oynaklık").format(vol_pct=vol_pct)}
 
     if vol_pct < 3:
-        return {
-            "label": "Orta",
-            "color": _AMBER,
-            "detail": f"{vol_pct:.2f}% oynaklık",
-        }
+        return {"label": "Orta", "color": _AMBER, "detail": lang_manager.tr("{vol_pct:.2f}% oynaklık").format(vol_pct=vol_pct)}
 
     if vol_pct < 6:
-        return {
-            "label": "Yüksek",
-            "color": _RED,
-            "detail": f"{vol_pct:.2f}% oynaklık",
-        }
+        return {"label": "Yüksek", "color": _RED, "detail": lang_manager.tr("{vol_pct:.2f}% oynaklık").format(vol_pct=vol_pct)}
 
-    return {
-        "label": "Çok Yüksek",
-        "color": "#ff3060",
-        "detail": f"{vol_pct:.2f}% oynaklık",
-    }
+    return {"label": "Çok Yüksek", "color": "#ff3060", "detail": lang_manager.tr("{vol_pct:.2f}% oynaklık").format(vol_pct=vol_pct)}
+
 def _fmt_price(price: float) -> str:
     """
     Küçük fiyatlı varlıkların 0.00 görünmesini engeller.
@@ -340,6 +328,8 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(STYLESHEET)
         self._build_ui()
         self._connect_signals()
+        lang_manager.subscribe(lambda _lang: self._apply_language())
+        self._apply_language()
 
         # initialise price feed with current market prices and refresh
         self._prev_prices = self._feed.get_all()
@@ -396,7 +386,7 @@ class MainWindow(QMainWindow):
         outer.addWidget(body, 1)
 
         self.statusBar().setObjectName("statusBar")
-        self.statusBar().showMessage("Hazir — piyasa simulasyonu aktif")
+        self.statusBar().showMessage(lang_manager.tr("Hazir — piyasa simulasyonu aktif"))
 
     # ── topbar ────────────────────────────────────────────────────────────────
 
@@ -432,6 +422,15 @@ class MainWindow(QMainWindow):
             hl.addWidget(_sep(vertical=True))
 
         hl.addStretch()
+        self._lang_btn_tr = _btn("TR", "sideInactive", h=30, minw=46)
+        self._lang_btn_en = _btn("EN", "sideInactive", h=30, minw=46)
+        self._lang_btn_tr.setCheckable(True)
+        self._lang_btn_en.setCheckable(True)
+        self._lang_btn_tr.clicked.connect(lambda: lang_manager.set_language(LANG_TR))
+        self._lang_btn_en.clicked.connect(lambda: lang_manager.set_language(LANG_EN))
+        hl.addWidget(self._lang_btn_tr)
+        hl.addSpacing(6)
+        hl.addWidget(self._lang_btn_en)
         return bar
 
     # ── sidebar ───────────────────────────────────────────────────────────────
@@ -444,14 +443,9 @@ class MainWindow(QMainWindow):
         vl.setContentsMargins(0, 10, 0, 0)
         vl.setSpacing(0)
 
-        pages = [
-            ("◎", "Özet", 0),
-            ("⇄", "İşlem", 1),
-            ("≡", "Geçmiş", 2),
-            ("⊙", "Analiz", 3),
-            ("📚", "Öğren", 4),
-        ]
+        pages = [("◎", "Özet", 0), ("⇄", "İşlem", 1), ("≡", "Geçmiş", 2), ("⊙", "Analiz", 3), ("📚", "Öğren", 4)]
         self._nav: list[_NavBtn] = []
+        self._nav_defs = pages[:]
         for icon, lbl, idx in pages:
             btn = _NavBtn(icon, lbl, idx)
             btn.clicked.connect(lambda _c, i=idx: self._goto(i))
@@ -469,7 +463,7 @@ class MainWindow(QMainWindow):
         user_card.setObjectName("userCard")
         user_card.setFixedHeight(72)
         user_card.setCursor(Qt.CursorShape.PointingHandCursor)
-        user_card.setToolTip("Hesap menüsü")
+        user_card.setToolTip(lang_manager.tr("Hesap menüsü"))
 
         card_vl = QVBoxLayout(user_card)
         card_vl.setContentsMargins(0, 8, 0, 8)
@@ -540,7 +534,7 @@ class MainWindow(QMainWindow):
             info_action = menu.addAction(f"👤  {self._username}")
             info_action.setEnabled(False)
             menu.addSeparator()
-            logout_action = menu.addAction("🚪  Çıkış Yap")
+            logout_action = menu.addAction(f"🚪  {lang_manager.tr('Çıkış Yap')}")
             logout_action.setEnabled(True)
 
             # Show menu above the button
@@ -641,7 +635,7 @@ class MainWindow(QMainWindow):
         right.addWidget(wl_frm)
 
         rec_frm, rec_vl = _card("SON İŞLEMLER")
-        self.d_recent = _table(["Zaman", "İşlem", "Sembol", "Tutar TL"], "tbl", stretch_cols=[0, 1, 2, 3])
+        self.d_recent = _table([lang_manager.tr("Zaman"), lang_manager.tr("İşlem"), lang_manager.tr("Sembol"), lang_manager.tr("Tutar TL")], "tbl", stretch_cols=[0, 1, 2, 3])
         self.d_recent.setMaximumHeight(140)
         rec_vl.addWidget(self.d_recent)
         right.addWidget(rec_frm)
@@ -657,7 +651,7 @@ class MainWindow(QMainWindow):
         learn_hdr = QHBoxLayout()
         learn_hdr.addWidget(_lbl("ÖĞRENME DURUMU", obj="cardTitle"))
         learn_hdr.addStretch()
-        self.d_learn_goto_btn = _btn("→ Öğren", "btnAmber", h=26)
+        self.d_learn_goto_btn = _btn(lang_manager.tr("→ Öğren"), "btnAmber", h=26)
         self.d_learn_goto_btn.clicked.connect(lambda: self._goto(4))
         learn_hdr.addWidget(self.d_learn_goto_btn)
         learn_vl.addLayout(learn_hdr)
@@ -741,10 +735,10 @@ class MainWindow(QMainWindow):
 
         act = QVBoxLayout()
         act.setSpacing(8)
-        sb1 = _btn("⇄  İşlem Yap",   "btnPrimary",   h=44, minw=160)
-        sb2 = _btn("📚  Öğren",       "btnAmber",     h=44, minw=160)
-        sb3 = _btn("🤖  AI Koç",      "btnSecondary", h=44, minw=160)
-        sb4 = _btn("⊙  Analiz Yap",  "btnSecondary", h=44, minw=160)
+        sb1 = _btn(lang_manager.tr("⇄ İşlem Yap"),   "btnPrimary",   h=44, minw=160)
+        sb2 = _btn(lang_manager.tr("📚 Öğren"),       "btnAmber",     h=44, minw=160)
+        sb3 = _btn(lang_manager.tr("🤖 AI Koç"),      "btnSecondary", h=44, minw=160)
+        sb4 = _btn(lang_manager.tr("⊙ Analiz Yap"),  "btnSecondary", h=44, minw=160)
         sb1.clicked.connect(lambda: self._goto(1))
         sb2.clicked.connect(lambda: self._goto(4))
         sb3.clicked.connect(lambda: self._goto(4))
@@ -839,7 +833,7 @@ class MainWindow(QMainWindow):
         return w
 
     def _order_form_card(self) -> QFrame:
-        frm, vl = _card("iSLEM EMRI")
+        frm, vl = _card(lang_manager.tr("iSLEM EMRI"))
 
         side_row = QHBoxLayout()
         side_row.setSpacing(0)
@@ -900,17 +894,60 @@ class MainWindow(QMainWindow):
         vl.addLayout(avail_row)
 
         vl.addSpacing(8)
-        self.btn_execute = _btn("İŞLEM GERÇEKLEŞTIR", "btnExecute", h=50)
+        self.btn_execute = _btn(lang_manager.tr("İŞLEM GERÇEKLEŞTIR"), "btnExecute", h=50)
         self.btn_execute.setFont(QFont("Arial", 13, QFont.Weight.Bold))
         vl.addWidget(self.btn_execute)
+        vl.addSpacing(8)
 
         reset_row = QHBoxLayout()
-        self.btn_max   = _btn("Maksimum", "btnGhost", h=30)
-        self.btn_half  = _btn("Yarı",     "btnGhost", h=30)
-        self.btn_reset = _btn("Temizle",  "btnGhost", h=30)
+        reset_row.setContentsMargins(0, 0, 0, 0)
+        reset_row.setSpacing(8)
+        self.btn_max   = _btn(lang_manager.tr("Maksimum"), "btnGhost", h=30)
+        self.btn_half  = _btn(lang_manager.tr("Yarı"),     "btnGhost", h=30)
+        self.btn_reset = _btn(lang_manager.tr("Temizle"),  "btnGhost", h=30)
         for b in (self.btn_max, self.btn_half, self.btn_reset): reset_row.addWidget(b, 1)
         vl.addLayout(reset_row)
         return frm
+
+    def _apply_language(self) -> None:
+        tr = lang_manager.tr
+        self.statusBar().showMessage(tr("Hazir — piyasa simulasyonu aktif"), 2500)
+        
+        if hasattr(self, "h_value_s"):
+            self.h_value_s.setText(tr("PORTFOY"))
+            self.h_pl_s.setText(tr("TOPLAM K/Z"))
+            self.h_cash_s.setText(tr("NAKIT"))
+            self.h_pos_s.setText(tr("POZISYON"))
+
+        if hasattr(self, "_lang_btn_tr"):
+            self._lang_btn_tr.setText("TR")
+            self._lang_btn_en.setText("EN")
+            self._lang_btn_tr.setChecked(lang_manager.language == LANG_TR)
+            self._lang_btn_en.setChecked(lang_manager.language == LANG_EN)
+            self._lang_btn_tr.setObjectName("sideActive" if self._lang_btn_tr.isChecked() else "sideInactive")
+            self._lang_btn_en.setObjectName("sideActive" if self._lang_btn_en.isChecked() else "sideInactive")
+            for btn in (self._lang_btn_tr, self._lang_btn_en):
+                btn.style().unpolish(btn)
+                btn.style().polish(btn)
+
+        if hasattr(self, "btn_execute"):
+            self.btn_execute.setText(tr("İŞLEM GERÇEKLEŞTIR"))
+            self.btn_max.setText(tr("Maksimum"))
+            self.btn_half.setText(tr("Yarı"))
+            self.btn_reset.setText(tr("Temizle"))
+
+        if hasattr(self, "btn_buy_mode"):
+            self.btn_buy_mode.setText("  BUY  " if lang_manager.language == LANG_EN else "  ALIŞ  ")
+            self.btn_sell_mode.setText("  SELL  " if lang_manager.language == LANG_EN else "  SATIŞ  ")
+
+        if hasattr(self, "_nav"):
+            for btn, (icon, label, _idx) in zip(self._nav, self._nav_defs):
+                btn._label = tr(label)
+                btn.setToolTip(tr(label))
+                btn.update()
+
+        apply_language_to_widget(self, lang_manager.language)
+        self._full_refresh() # Tüm dinamik öğeleri anında seçili dile çevirir
 
     def _account_summary_card(self) -> QFrame:
         frm, vl = _card("HESAP ÖZETİ")
@@ -936,7 +973,7 @@ class MainWindow(QMainWindow):
         _kv("Toplam İşlem",    "acc_trade_count")
 
         vl.addSpacing(6)
-        self.btn_report = _btn("⬇  Rapor Kaydet", "btnGhost", h=34)
+        self.btn_report = _btn(lang_manager.tr("⬇ Rapor Kaydet"), "btnGhost", h=34)
         vl.addWidget(self.btn_report)
         return frm
 
@@ -1202,12 +1239,12 @@ class MainWindow(QMainWindow):
         self.o_total_lbl.setText(f"TL {total:,.2f}")
 
         if self._order_side == "AL":
-            self.o_avail_lbl.setText(f"Nakit: TL {self.state.cash:,.2f}")
+            self.o_avail_lbl.setText(lang_manager.tr("Nakit: TL {cash:,.2f}").format(cash=self.state.cash))
         else:
             sym = self.o_symbol.text().strip().upper()
             pos = self.state._find(sym)
             qty_held = pos.quantity if pos else 0.0
-            self.o_avail_lbl.setText(f"{sym} miktar: {qty_held:,.6g}")
+            self.o_avail_lbl.setText(lang_manager.tr("{sym} miktar: {qty:,.6g}").format(sym=sym, qty=qty_held))
 
     def _fill_max(self) -> None:
         price = self.o_price.value()
@@ -1558,30 +1595,34 @@ class MainWindow(QMainWindow):
         curr, total = self._ls.level_progress() if hasattr(self._ls, "level_progress") else (xp, 700)
         pct = int(min(curr / total * 100, 100)) if total > 0 else 100
 
-        self.d_level_badge.setText(f"{icon} {label}")
+        # DÜZELTME 1: label çevrildi
+        self.d_level_badge.setText(f"{icon} {lang_manager.tr(label)}")
         self.d_xp_txt.setText(f"{xp} XP")
         self.d_xp_prog.setValue(pct)
         self.d_xp_val.setText(f"{xp} XP")
-        self.d_level_sub.setText(f"{icon} {label}  ·  {curr}/{total}")
+        
+        # DÜZELTME 2: format içindeki label çevrildi
+        self.d_level_sub.setText(lang_manager.tr("{icon} {label}  ·  {curr}/{total}").format(icon=icon, label=lang_manager.tr(label), curr=curr, total=total))
 
         active_task = self._get_active_task()
         if active_task:
             self.d_task_icon_lbl.setText(active_task.icon)
-            self.d_task_title_lbl.setText(active_task.title)
-            self.d_task_obj_lbl.setText(active_task.objective)
+            self.d_task_title_lbl.setText(lang_manager.tr(active_task.title))
+            self.d_task_obj_lbl.setText(lang_manager.tr(active_task.objective))
             self._d_task_goto = active_task.navigate_to
             try: self.d_task_nav_btn.clicked.disconnect()
             except (RuntimeError, TypeError): pass
             self.d_task_nav_btn.clicked.connect(lambda: self._goto(self._d_task_goto))
             self.d_task_nav_btn.setVisible(True)
         else:
+            # DÜZELTME 3: Görev bitiş metinleri çevrildi
             self.d_task_icon_lbl.setText("🏆")
-            self.d_task_title_lbl.setText("Tüm görevler tamamlandı!")
-            self.d_task_obj_lbl.setText("Artık bir portföy ustasısın. Liderliği koru!")
+            self.d_task_title_lbl.setText(lang_manager.tr("Tüm görevler tamamlandı!"))
+            self.d_task_obj_lbl.setText(lang_manager.tr("Artık bir portföy ustasısın. Liderliği koru!"))
             self.d_task_nav_btn.setVisible(False)
 
         risk = _compute_risk_label(self.state)
-        self.d_risk_badge.setText(f"Risk: {risk['label']}")
+        self.d_risk_badge.setText(lang_manager.tr("Risk: {label}").format(label=lang_manager.tr(risk['label']).upper()))
         self.d_risk_badge.setStyleSheet(
             f"color:{risk['color']}; background:{risk['color']}18; "
             f"border:1px solid {risk['color']}44; border-radius:5px; font-size:11px; font-weight:700; padding:3px 10px;"
@@ -1598,8 +1639,8 @@ class MainWindow(QMainWindow):
         active_task = self._get_active_task()
         if active_task:
             self.t_task_icon.setText(active_task.icon)
-            self.t_task_title.setText(f"Görev: {active_task.title}")
-            self.t_task_obj.setText(active_task.objective)
+            self.t_task_title.setText(lang_manager.tr("Görev: {title}").format(title=lang_manager.tr(active_task.title)))
+            self.t_task_obj.setText(lang_manager.tr(active_task.objective))
             self.t_task_banner.setVisible(True)
         else:
             self.t_task_banner.setVisible(False)
@@ -1631,7 +1672,7 @@ class MainWindow(QMainWindow):
         rpl_c = _GREEN if rpl >= 0 else _RED
 
         self.d_pv.setText(f"TL {pv:,.0f}")
-        self.d_pv_s.setText(f"Başlangıç: TL {self.state.starting_balance:,.0f}")
+        self.d_pv_s.setText(lang_manager.tr("Başlangıç: TL {val:,.0f}").format(val=self.state.starting_balance))
         self.d_pl.setText(f"{pl:+,.0f} TL")
         self.d_pl.setStyleSheet(f"color:{pl_c}; font-weight:700; font-family:Consolas; font-size:18px;")
         self.d_pl_s.setText(f"% {pc:+.2f}")
@@ -1698,17 +1739,17 @@ class MainWindow(QMainWindow):
 
             if feat is not None:
                 risk_info = _risk_from_volatility(feat.last_volatility)
-                risk_txt = risk_info["label"]
+                risk_txt = lang_manager.tr(risk_info["label"])
                 risk_c = risk_info["color"]
-                risk_detail = risk_info["detail"]
+                risk_detail = lang_manager.tr(risk_info["detail"])
             else:
                 risk_txt = "—"
                 risk_c = _TEXT3
-                risk_detail = "CSV verisi yok"
+                risk_detail = lang_manager.tr("CSV verisi yok")
 
-            desc = edu.get("desc", "")
-            if risk_detail != "CSV verisi yok":
-                desc = f"{desc} | Risk ölçümü: {risk_detail}"
+            desc = lang_manager.tr(edu.get("desc", ""))
+            if risk_detail != lang_manager.tr("CSV verisi yok"):
+                desc = lang_manager.tr("{desc} | Risk ölçümü: {risk_detail}").format(desc=desc, risk_detail=risk_detail)
 
             self.wl_table.setItem(
                 r, 0,
@@ -1773,7 +1814,7 @@ class MainWindow(QMainWindow):
 
         risk = _compute_risk_label(self.state)
         if hasattr(self, "acc_risk"):
-            self.acc_risk.setText(risk["label"])
+            self.acc_risk.setText(lang_manager.tr(risk["label"]).upper())
             self.acc_risk.setStyleSheet(f"color:{risk['color']}; font-weight:700;")
 
         if hasattr(self, "acc_trade_count"):
@@ -1802,7 +1843,7 @@ class MainWindow(QMainWindow):
         if hasattr(self, "hi_winrate"):
             self.hi_winrate.setText(f"% {win_rate:.1f}")
             self.hi_winrate.setStyleSheet(f"color:{wr_color}; font-weight:700; font-family:Consolas; font-size:18px;")
-            self.hi_winrate_sub.setText(f"{profit_sell} kârlı / {sell_count} satım")
+            self.hi_winrate_sub.setText(lang_manager.tr("{profit_sell} kârlı / {sell_count} satım").format(profit_sell=profit_sell, sell_count=sell_count))
 
         if hasattr(self, "hi_profitsell"):
             self.hi_profitsell.setText(str(profit_sell))
@@ -1815,7 +1856,7 @@ class MainWindow(QMainWindow):
         if hasattr(self, "hi_risk"):
             self.hi_risk.setText(risk["label"])
             self.hi_risk.setStyleSheet(f"color:{risk['color']}; font-weight:700; font-family:Consolas; font-size:18px;")
-            self.hi_risk_sub.setText(risk["detail"])
+            self.hi_risk_sub.setText(lang_manager.tr(risk["detail"]))
 
         for r, t in enumerate(trades):
             c = _GREEN if t.side == "AL" else _RED
@@ -1861,7 +1902,7 @@ class MainWindow(QMainWindow):
             return
 
         ts   = self.trend_summary
-        DIR  = {"up": "YÜKSELİŞ ↑", "down": "DÜŞÜŞ ↓", "flat": "YATAY →"}
+        DIR  = {"up": lang_manager.tr("YÜKSELİŞ ↑"), "down": lang_manager.tr("DÜŞÜŞ ↓"), "flat": lang_manager.tr("YATAY →")}
         dc   = _GREEN if ts.direction == "up" else (_RED if ts.direction == "down" else _AMBER)
         cc   = _GREEN if ts.change_pct >= 0 else _RED
 
@@ -1877,11 +1918,11 @@ class MainWindow(QMainWindow):
         for r, fp in enumerate(self.forecast):
             diff  = fp.value - prev
             dc2   = _GREEN if diff >= 0 else _RED
-            self.an_table.setItem(r, 0, _item(f"Adım {fp.index + 1}", _TEXT3))
+            self.an_table.setItem(r, 0, _item(lang_manager.tr("Adım {idx}").format(idx=fp.index + 1), _TEXT3))
             self.an_table.setItem(r, 1, _item(f"TL {fp.value:,.2f}", _TEXT, mono=True))
             self.an_table.setItem(r, 2, _item(f"{diff:+,.2f}", dc2, bold=True))
             prev = fp.value
-        self.an_status.setText(f"Son senaryo: {self.state.simulation_status}")
+        self.an_status.setText(lang_manager.tr("Son senaryo: {status}").format(status=lang_manager.tr(self.state.simulation_status)))
 
     def _show_warnings(self, warnings: list) -> None:
         if hasattr(self, "_learn_page"):
@@ -1948,7 +1989,7 @@ class MainWindow(QMainWindow):
 
     def _rotate_tip(self) -> None:
         if TIPS:
-            self.statusBar().showMessage(TIPS[self._tip_index % len(TIPS)], 10000)
+            self.statusBar().showMessage(lang_manager.tr(TIPS[self._tip_index % len(TIPS)]), 10000)
             self._tip_index += 1
 
     def _refresh_tutorial(self) -> None:
@@ -2060,7 +2101,7 @@ QLineEdit#formInput:focus, QDoubleSpinBox#formInput:focus, QDateEdit#formInput:f
 QDoubleSpinBox#formInput::up-button, QDoubleSpinBox#formInput::down-button {{ width: 18px; background: {_BORDER}; border: none; }}
 
 /* buttons */
-QPushButton {{ border-radius: 6px; font-size: 12px; font-weight: 600; padding: 0 14px; }}
+QPushButton {{ border-radius: 10px; font-size: 12px; font-weight: 600; padding: 0 14px; }}
 QPushButton#btnPrimary {{ background: {_ACCENT}; color: white; border: none; }}
 QPushButton#btnPrimary:hover {{ background: {_ACCH}; }}
 QPushButton#btnPrimary:pressed {{ background: #1e40af; }}
@@ -2074,8 +2115,8 @@ QPushButton#btnGhost {{ background: transparent; color: {_TEXT3}; border: 1px so
 QPushButton#btnGhost:hover {{ color: {_TEXT}; border-color: {_TEXT3}; }}
 
 /* order side toggle */
-QPushButton#sideActive {{ background: {_ACCENT}; color: white; border: none; border-radius: 0px; font-size: 14px; font-weight: 800; }}
-QPushButton#sideInactive {{ background: {_SURF2}; color: {_TEXT3}; border: none; border-radius: 0px; font-size: 13px; }}
+QPushButton#sideActive {{ background: {_ACCENT}; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 800; }}
+QPushButton#sideInactive {{ background: {_SURF2}; color: {_TEXT3}; border: 1px solid {_BORDER}; border-radius: 8px; font-size: 13px; }}
 QPushButton#sideInactive:hover {{ background: {_BORDER}; color: {_TEXT2}; }}
 
 /* execute order button */

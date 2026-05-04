@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pandas as pd  # type: ignore[import-untyped]
 
+from src.ui.i18n import lang_manager
 
 @dataclass
 class DatasetInfo:
@@ -47,16 +48,16 @@ class DataLoader:
     def inspect_csv(self, file_path: str) -> DatasetInfo:
         path = Path(file_path)
         if not path.exists():
-            raise FileNotFoundError(f"Dosya bulunamadi: {file_path}")
+            raise FileNotFoundError(lang_manager.tr("Dosya bulunamadi: {file_path}").format(file_path=file_path))
         if path.suffix.lower() != ".csv":
-            raise ValueError("Su anda sadece CSV dosyalari destekleniyor.")
+            raise ValueError(lang_manager.tr("Su anda sadece CSV dosyalari destekleniyor."))
 
         with path.open("r", encoding="utf-8-sig", newline="") as handle:
             reader = csv.reader(handle)
             try:
                 columns = next(reader)
             except StopIteration as error:
-                raise ValueError("CSV dosyasi bos.") from error
+                raise ValueError(lang_manager.tr("CSV dosyasi bos.")) from error
 
             row_count = sum(1 for _ in reader)
 
@@ -74,13 +75,13 @@ class DataLoader:
         """
         path = Path(file_path)
         if not path.exists():
-            raise FileNotFoundError(f"Dosya bulunamadi: {file_path}")
+            raise FileNotFoundError(lang_manager.tr("Dosya bulunamadi: {file_path}").format(file_path=file_path))
         if path.suffix.lower() != ".csv":
-            raise ValueError("Su anda sadece CSV dosyalari destekleniyor.")
+            raise ValueError(lang_manager.tr("Su anda sadece CSV dosyalari destekleniyor."))
 
         df = pd.read_csv(path, encoding="utf-8-sig")
         if df.empty:
-            raise ValueError("CSV dosyasi bos.")
+            raise ValueError(lang_manager.tr("CSV dosyasi bos."))
 
         # Normalise column names for detection (keep originals for data access)
         col_map: dict[str, str] = {c.strip().lower(): c.strip() for c in df.columns}
@@ -94,10 +95,7 @@ class DataLoader:
                 break
 
         if date_column is None:
-            raise ValueError(
-                "Tarih sütunu bulunamadi. "
-                "Beklenen sütun adlari: Date, Timestamp, Datetime"
-            )
+            raise ValueError(lang_manager.tr("Tarih sütunu bulunamadi. Beklenen sütun adlari: Date, Timestamp, Datetime"))
 
         # ── detect price columns ──────────────────────────────────────────────
         price_columns = [
@@ -105,10 +103,7 @@ class DataLoader:
         ]
 
         if not price_columns:
-            raise ValueError(
-                "Fiyat sütunu bulunamadi. "
-                "Beklenen sütun adlari: Open, High, Low, Close, Price"
-            )
+            raise ValueError(lang_manager.tr("Fiyat sütunu bulunamadi. Beklenen sütun adlari: Open, High, Low, Close, Price"))
 
         # ── detect symbol ─────────────────────────────────────────────────────
         symbol = "UNKNOWN"
@@ -150,5 +145,5 @@ class DataLoader:
                 dataset = self.load_csv(str(csv_path))
                 results[dataset.symbol] = dataset
             except Exception as error:
-                print(f"[DataLoader] {csv_path.name} yuklenemedi: {error}")
+                print(lang_manager.tr("[DataLoader] {name} yuklenemedi: {error}").format(name=csv_path.name, error=error))
         return results

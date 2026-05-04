@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import QApplication
 
 from src.db import Database
 from src.portfolio import PortfolioState
-from src.ui import MainWindow
+from src.ui.main_window import MainWindow
 from src.ui.login_dialog import LoginDialog
 
 

@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src.db.database import Database, UserRow
+from src.ui.i18n import LANG_EN, LANG_TR, apply_language_to_widget, lang_manager
 
 # ── palette (matches main_window.py) ─────────────────────────────────────────
 _BG      = "#0b0f1a"
@@ -112,6 +113,35 @@ def _link_btn(text: str) -> QPushButton:
     return b
 
 
+def _lang_btn(text: str) -> QPushButton:
+    b = QPushButton(text)
+    b.setFixedHeight(34)
+    b.setFixedWidth(64)
+    b.setCursor(Qt.CursorShape.PointingHandCursor)
+    b.setCheckable(True)
+    b.setStyleSheet(f"""
+        QPushButton {{
+            background: {_SURF};
+            color: {_TEXT3};
+            border: 1px solid {_BORDER};
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+        }}
+        QPushButton:hover {{
+            background: {_SURF2};
+            color: {_TEXT2};
+        }}
+        QPushButton:checked {{
+            background: {_ACCENT};
+            color: white;
+            border: none;
+            font-weight: 700;
+        }}
+    """)
+    return b
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  LoginDialog
 # ══════════════════════════════════════════════════════════════════════════════
@@ -129,7 +159,7 @@ class LoginDialog(QDialog):
         self.user_row: UserRow | None = None
         self.session_id: str = ""
 
-        self.setWindowTitle("PortfolioSim — Giriş")
+        self.setWindowTitle(lang_manager.tr("PortfolioSim — Giriş"))
         self.setFixedSize(480, 620)
         self.setModal(True)
         self.setWindowFlags(
@@ -139,6 +169,8 @@ class LoginDialog(QDialog):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         self._build()
+        lang_manager.subscribe(lambda _lang: self._apply_language())
+        self._apply_language()
 
     # ── paint rounded container ───────────────────────────────────────────────
 
@@ -233,6 +265,18 @@ class LoginDialog(QDialog):
         root.addWidget(subtitle)
         root.addSpacing(24)
 
+        lang_row = QHBoxLayout()
+        lang_row.addStretch()
+        self._btn_lang_tr = _lang_btn("TR")
+        self._btn_lang_en = _lang_btn("EN")
+        self._btn_lang_tr.clicked.connect(lambda: self._set_lang(LANG_TR))
+        self._btn_lang_en.clicked.connect(lambda: self._set_lang(LANG_EN))
+        lang_row.addWidget(self._btn_lang_tr)
+        lang_row.addWidget(self._btn_lang_en)
+        lang_row.addStretch()
+        root.addLayout(lang_row)
+        root.addSpacing(10)
+
         # ── tab switcher ──────────────────────────────────────────────────────
         tab_row = QHBoxLayout()
         tab_row.setSpacing(0)
@@ -318,6 +362,10 @@ class LoginDialog(QDialog):
         footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
         footer.setStyleSheet(f"color: {_TEXT3}; font-size: 11px;")
         root.addWidget(footer)
+        self._subtitle = subtitle
+        self._link_to_register = lnk
+        self._link_to_login = lnk2
+        self._footer = footer
 
         # ── connect ───────────────────────────────────────────────────────────
         self._l_btn.clicked.connect(self._do_login)
@@ -326,6 +374,29 @@ class LoginDialog(QDialog):
         # Enter key submits
         self._l_pass.returnPressed.connect(self._do_login)
         self._r_pass2.returnPressed.connect(self._do_register)
+
+    def _set_lang(self, lang: str) -> None:
+        lang_manager.set_language(lang)
+
+    def _apply_language(self) -> None:
+        tr = lang_manager.tr
+        self.setWindowTitle(tr("PortfolioSim — Giriş"))
+        self._subtitle.setText(tr("Yatırım simülasyon platformu"))
+        self._tab_login.setText(tr("Giriş Yap"))
+        self._tab_register.setText(tr("Kayıt Ol"))
+        self._l_user.setPlaceholderText(tr("Kullanıcı adı"))
+        self._l_pass.setPlaceholderText(tr("Şifre"))
+        self._l_btn.setText(tr("Giriş Yap  →"))
+        self._r_user.setPlaceholderText(tr("Kullanıcı adı (en az 3 karakter)"))
+        self._r_pass.setPlaceholderText(tr("Şifre (en az 4 karakter)"))
+        self._r_pass2.setPlaceholderText(tr("Şifre tekrar"))
+        self._r_btn.setText(tr("Kayıt Ol  ✓"))
+        self._link_to_register.setText(tr("Hesabın yok mu?  Kayıt ol →"))
+        self._link_to_login.setText(tr("Zaten hesabın var mı?  Giriş yap →"))
+        self._footer.setText(tr("🔒  Verileriniz yalnızca yerel olarak saklanır"))
+        self._btn_lang_tr.setChecked(lang_manager.language == LANG_TR)
+        self._btn_lang_en.setChecked(lang_manager.language == LANG_EN)
+        apply_language_to_widget(self, lang_manager.language)
 
     # ── tab switching ─────────────────────────────────────────────────────────
 
@@ -381,19 +452,22 @@ class LoginDialog(QDialog):
         password = self._l_pass.text()
 
         if not username or not password:
-            self._show_error(self._l_err, "Lütfen kullanıcı adı ve şifre girin.")
+            self._show_error(self._l_err, lang_manager.db_error("Lütfen kullanıcı adı ve şifre girin."))
             return
 
         result = self._db.verify_login(username, password)
         if isinstance(result, str):
-            self._show_error(self._l_err, result)
+            self._show_error(self._l_err, lang_manager.db_error(result))
             return
 
         # success
         self.user_row = result
         self.session_id = uuid.uuid4().hex
         self._db.start_session(result.id, self.session_id)
-        self._show_success(self._l_err, f"Hoş geldin, {result.username}!")
+        if lang_manager.language == LANG_EN:
+            self._show_success(self._l_err, f"Welcome, {result.username}!")
+        else:
+            self._show_success(self._l_err, f"Hoş geldin, {result.username}!")
         QTimer.singleShot(600, self.accept)
 
     def _do_register(self) -> None:
@@ -402,20 +476,23 @@ class LoginDialog(QDialog):
         password2 = self._r_pass2.text()
 
         if not username or not password:
-            self._show_error(self._r_err, "Lütfen tüm alanları doldurun.")
+            self._show_error(self._r_err, lang_manager.db_error("Lütfen tüm alanları doldurun."))
             return
         if password != password2:
-            self._show_error(self._r_err, "Şifreler eşleşmiyor.")
+            self._show_error(self._r_err, lang_manager.db_error("Şifreler eşleşmiyor."))
             return
 
         result = self._db.register_user(username, password)
         if isinstance(result, str):
-            self._show_error(self._r_err, result)
+            self._show_error(self._r_err, lang_manager.db_error(result))
             return
 
         # auto-login after registration
         self.user_row = result
         self.session_id = uuid.uuid4().hex
         self._db.start_session(result.id, self.session_id)
-        self._show_success(self._r_err, f"Kayıt başarılı!  Hoş geldin, {result.username}!")
+        if lang_manager.language == LANG_EN:
+            self._show_success(self._r_err, f"Registration successful! Welcome, {result.username}!")
+        else:
+            self._show_success(self._r_err, f"Kayıt başarılı!  Hoş geldin, {result.username}!")
         QTimer.singleShot(800, self.accept)

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any
+from src.ui.i18n import lang_manager
 
 
 @dataclass(frozen=True)
@@ -48,17 +49,17 @@ def _rule_overconcentration(
         return MistakeWarning(
             severity="danger",
             icon="⚠️",
-            title=f"{symbol} portföyün %{weight:.0f}'ini oluşturuyor",
-            explanation="Tek bir varlığa bu kadar yoğunlaşmak, o varlığın düşüşünde büyük kayıp yaratır.",
-            suggestion="Farklı sektörlerden 3+ varlık satın alarak riski dağıt.",
+            title=lang_manager.tr("{symbol} portföyün %{weight:.0f}'ini oluşturuyor").format(symbol=symbol, weight=weight),
+            explanation=lang_manager.tr("Tek bir varlığa bu kadar yoğunlaşmak, o varlığın düşüşünde büyük kayıp yaratır."),
+            suggestion=lang_manager.tr("Farklı sektörlerden 3+ varlık satın alarak riski dağıt."),
         )
     if weight >= 55:
         return MistakeWarning(
             severity="warning",
             icon="⚡",
-            title=f"{symbol} ağırlığı yüksek (%{weight:.0f})",
-            explanation="Portföyünün yarısından fazlası tek varlıkta; piyasa düşüşü sert etki yapar.",
-            suggestion="Başka bir varlık ekleyerek %50'nin altına çekmeyi deneyin.",
+            title=lang_manager.tr(f"{symbol} ağırlığı yüksek (%{weight:.0f})"),
+            explanation=lang_manager.tr("Portföyünün yarısından fazlası tek varlıkta; piyasa düşüşü sert etki yapar."),
+            suggestion=lang_manager.tr("Başka bir varlık ekleyerek %50'nin altına çekmeyi deneyin."),
         )
     return None
 
@@ -74,9 +75,8 @@ def _rule_large_single_trade(
         return MistakeWarning(
             severity="warning",
             icon="💸",
-            title=f"Nakitin %{pct:.0f}'ini tek hamlede harcadınız",
-            explanation="Tüm nakit tek işlemde kullanılırsa fırsat çıktığında alım yapacak para kalmaz.",
-            suggestion="Nakitin en fazla %50'sini tek seferde kullan; geri kalanını fırsatlar için sakla.",
+            title=lang_manager.tr("Nakitin %{pct:.0f}'ini tek hamlede harcadınız").format(pct=pct),
+            explanation=lang_manager.tr("Tüm nakit tek işlemde kullanılırsa fırsat çıktığında alım yapacak para kalmaz."),
         )
     return None
 
@@ -92,9 +92,9 @@ def _rule_panic_sell_at_loss(
         return MistakeWarning(
             severity="warning",
             icon="📉",
-            title=f"{symbol}: %{abs(loss_pct):.0f} zararda satış",
-            explanation="Panikle satış, kağıt üzerindeki kaybı gerçek kayba dönüştürür.",
-            suggestion="Fiyatın neden düştüğünü analiz et; uzun vadeli varlıklar genellikle toparlanır.",
+            title=lang_manager.tr("{symbol}: %{abs_loss_pct:.0f} zararda satış").format(symbol=symbol, abs_loss_pct=abs(loss_pct)),
+            explanation=lang_manager.tr("Panikle satış, kağıt üzerindeki kaybı gerçek kayba dönüştürür."),
+            suggestion=lang_manager.tr("Fiyatın neden düştüğünü analiz et; uzun vadeli varlıklar genellikle toparlanır."),
         )
     return None
 
@@ -110,9 +110,9 @@ def _rule_selling_winner_early(
         return MistakeWarning(
             severity="info",
             icon="💡",
-            title=f"{symbol} güçlü yükseliş trendinde (+%{gain_pct:.0f})",
-            explanation="Yükseliş trendi devam edebilir; erken satış ek kazançları kaçırmana yol açabilir.",
-            suggestion="Pozisyonun yarısını sat, geri kalanı ile trend takibini sürdür.",
+            title=lang_manager.tr("{symbol} güçlü yükseliş trendinde (+%{gain_pct:.0f})").format(symbol=symbol, gain_pct=gain_pct),
+            explanation=lang_manager.tr("Yükseliş trendi devam edebilir; erken satış ek kazançları kaçırmana yol açabilir."),
+            suggestion=lang_manager.tr("Pozisyonun yarısını sat, geri kalanı ile trend takibini sürdür."),
         )
     return None
 
@@ -123,9 +123,9 @@ def _rule_no_diversification(state: Any) -> MistakeWarning | None:
         return MistakeWarning(
             severity="warning",
             icon="🌐",
-            title="5+ işlem, hâlâ tek varlık",
-            explanation="Birden fazla işlem yaptın ama çeşitlendirme yapmadın; tek varlık riski devam ediyor.",
-            suggestion="BTC'ye ek olarak ETH, AAPL veya GOLD gibi farklı sektörlerden bir varlık al.",
+            title=lang_manager.tr("5+ işlem, hâlâ tek varlık"),
+            explanation=lang_manager.tr("Birden fazla işlem yaptın ama çeşitlendirme yapmadın; tek varlık riski devam ediyor."),
+            suggestion=lang_manager.tr("BTC'ye ek olarak ETH, AAPL veya GOLD gibi farklı sektörlerden bir varlık al."),
         )
     return None
 
@@ -140,9 +140,9 @@ def _rule_idle_cash(state: Any) -> MistakeWarning | None:
         return MistakeWarning(
             severity="info",
             icon="😴",
-            title=f"Nakitin %{cash_pct:.0f}'i atıl duruyor",
-            explanation="Portföyünün büyük kısmı nakit; yatırım yapmadan kâr edilemez.",
-            suggestion="Piyasayı incele ve nakdinin bir kısmını çeşitlendirilmiş varlıklara yatır.",
+            title=lang_manager.tr("Nakitin %{cash_pct:.0f}'i atıl duruyor").format(cash_pct=cash_pct),
+            explanation=lang_manager.tr("Portföyünün büyük kısmı nakit; yatırım yapmadan kâr edilemez."),
+            suggestion=lang_manager.tr("Piyasayı incele ve nakdinin bir kısmını çeşitlendirilmiş varlıklara yatır."),
         )
     return None
 
@@ -153,9 +153,9 @@ def _rule_over_trading(state: Any) -> MistakeWarning | None:
         return MistakeWarning(
             severity="warning",
             icon="🔄",
-            title="Çok fazla işlem, zarar büyüyor",
-            explanation="20+ işleme rağmen gerçekleşmiş kâr negatif; sürekli alım-satım sorunu çözmez.",
-            suggestion="Strateji belirle: bir varlığı hedef fiyata kadar tut, ardından sat.",
+            title=lang_manager.tr("Çok fazla işlem, zarar büyüyor"),
+            explanation=lang_manager.tr("20+ işleme rağmen gerçekleşmiş kâr negatif; sürekli alım-satım sorunu çözmez."),
+            suggestion=lang_manager.tr("Strateji belirle: bir varlığı hedef fiyata kadar tut, ardından sat."),
         )
     return None
 

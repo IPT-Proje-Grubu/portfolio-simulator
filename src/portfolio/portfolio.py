@@ -9,6 +9,7 @@ from pathlib import Path
 from src.alerts.alert_system import Alert, build_price_alert, build_stable_alert
 from src.portfolio.asset import Position
 from src.portfolio.trade import Trade
+from src.ui.i18n import lang_manager
 
 
 @dataclass
@@ -72,18 +73,16 @@ class PortfolioState:
     def execute_buy(self, symbol: str, quantity: float, price: float) -> Trade:
         symbol = symbol.strip().upper()
         if not symbol:
-            raise ValueError("Sembol bos birakilamaz.")
+            raise ValueError(lang_manager.tr("Sembol bos birakilamaz."))
         if quantity <= 0:
-            raise ValueError("Miktar sifirdan buyuk olmali.")
+            raise ValueError(lang_manager.tr("Miktar sifirdan buyuk olmali."))
         if price <= 0:
-            raise ValueError("Fiyat sifirdan buyuk olmali.")
+            raise ValueError(lang_manager.tr("Fiyat sifirdan buyuk olmali."))
 
         total = round(quantity * price, 2)
         if total > self.cash + 0.01:
             raise ValueError(
-                f"Yetersiz bakiye.\n"
-                f"Gereken  : TL {total:,.2f}\n"
-                f"Mevcut   : TL {self.cash:,.2f}"
+                lang_manager.tr("Yetersiz bakiye.\nGereken  : TL {total:,.2f}\nMevcut   : TL {self.cash:,.2f}").format(total=total, self=self)
             )
 
         existing = self._find(symbol)
@@ -109,22 +108,18 @@ class PortfolioState:
         self._next_id += 1
         self.trade_history.append(trade)
         self._push_value()
-        self.simulation_status = f"Alim: {quantity:.4g} {symbol} @ TL {price:,.2f}"
+        self.simulation_status = lang_manager.tr("Alim: {quantity:.4g} {symbol} @ TL {price:,.2f}").format(quantity=quantity, symbol=symbol, price=price)
         return trade
 
     def execute_sell(self, symbol: str, quantity: float, price: float) -> Trade:
         symbol = symbol.strip().upper()
         existing = self._find(symbol)
         if not existing:
-            raise ValueError(f"{symbol} icin acik pozisyon bulunamadi.")
+            raise ValueError(lang_manager.tr("{symbol} icin acik pozisyon bulunamadi.").format(symbol=symbol))
         if quantity <= 0:
             raise ValueError("Miktar sifirdan buyuk olmali.")
         if quantity > existing.quantity + 1e-9:
-            raise ValueError(
-                f"Yetersiz pozisyon.\n"
-                f"Satilmak istenen : {quantity:.6g}\n"
-                f"Mevcut miktar    : {existing.quantity:.6g}"
-            )
+            raise ValueError(lang_manager.tr("Yetersiz pozisyon.\nSatilmak istenen : {quantity:.6g}\nMevcut miktar    : {existing_qty:.6g}").format(quantity=quantity, existing_qty=existing.quantity))
 
         total = round(quantity * price, 2)
         new_qty = round(existing.quantity - quantity, 8)
@@ -138,7 +133,7 @@ class PortfolioState:
         self._next_id += 1
         self.trade_history.append(trade)
         self._push_value()
-        self.simulation_status = f"Satim: {quantity:.4g} {symbol} @ TL {price:,.2f}"
+        self.simulation_status = lang_manager.tr("Satim: {quantity:.4g} {symbol} @ TL {price:,.2f}").format(quantity=quantity, symbol=symbol, price=price)
         return trade
 
     def update_prices(self, prices: dict[str, float]) -> None:
@@ -154,15 +149,15 @@ class PortfolioState:
 
     def attach_dataset(self, file_path: str) -> None:
         self.loaded_dataset = Path(file_path)
-        self.simulation_status = "Veri dosyasi secildi"
+        self.simulation_status = lang_manager.tr("Veri dosyasi secildi")
 
     # ── scenario simulation (used by Analysis tab) ────────────────────────────
 
     def run_simulation(self, start_date: date, end_date: date) -> None:
         if not self.positions:
-            raise ValueError("Simulasyon icin en az bir pozisyon olmali.")
+            raise ValueError(lang_manager.tr("Simulasyon icin en az bir pozisyon olmali."))
         if end_date < start_date:
-            raise ValueError("Bitis tarihi baslangic tarihinden once olamaz.")
+            raise ValueError(lang_manager.tr("Bitis tarihi baslangic tarihinden once olamaz."))
 
         days = max((end_date - start_date).days, 1)
         generated: list[Alert] = []
@@ -175,9 +170,7 @@ class PortfolioState:
 
         self.alerts = generated or [build_stable_alert()]
         self._rebuild_history()
-        self.simulation_status = (
-            f"Simulasyon tamamlandi ({start_date.isoformat()} → {end_date.isoformat()})"
-        )
+        self.simulation_status = lang_manager.tr("Simulasyon tamamlandi ({start_date} → {end_date})").format(start_date=start_date.isoformat(), end_date=end_date.isoformat())
 
     def build_report(self, start_date: date, end_date: date) -> str:
         lines = [
