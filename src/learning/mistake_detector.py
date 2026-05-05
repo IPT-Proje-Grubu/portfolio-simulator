@@ -77,6 +77,7 @@ def _rule_large_single_trade(
             icon="💸",
             title=lang_manager.tr("Nakitin %{pct:.0f}'ini tek hamlede harcadınız").format(pct=pct),
             explanation=lang_manager.tr("Tüm nakit tek işlemde kullanılırsa fırsat çıktığında alım yapacak para kalmaz."),
+            suggestion=lang_manager.tr("Bir sonraki alımın için nakit rezervi bırakmayı dene."),
         )
     return None
 
