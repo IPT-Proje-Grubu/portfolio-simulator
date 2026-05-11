@@ -1112,7 +1112,7 @@ class MainWindow(QMainWindow):
         center.setSpacing(12)
 
         an_chart_frm, an_chart_vl = _card("SENARYO GRAFİĞİ")
-        self.an_chart = ChartPlaceholder("Senaryo sonucu bekleniyor", "line")
+        self.an_chart = ChartPlaceholder(lang_manager.tr("Senaryo sonucu bekleniyor"))
         self.an_chart.setMinimumHeight(200)
         an_chart_vl.addWidget(self.an_chart, 1)
         center.addWidget(an_chart_frm, 3)
@@ -1854,7 +1854,7 @@ class MainWindow(QMainWindow):
             self.hi_xp_earned.setStyleSheet(f"color:{_AMBER}; font-weight:700; font-family:Consolas; font-size:18px;")
 
         if hasattr(self, "hi_risk"):
-            self.hi_risk.setText(risk["label"])
+            self.hi_risk.setText(lang_manager.tr(risk["label"]).upper())
             self.hi_risk.setStyleSheet(f"color:{risk['color']}; font-weight:700; font-family:Consolas; font-size:18px;")
             self.hi_risk_sub.setText(lang_manager.tr(risk["detail"]))
 

@@ -189,7 +189,7 @@ class XPHeaderBar(QFrame):
         curr_xp, level_xp = ls.level_progress()
         total_xp = ls.xp
 
-        self._level_badge.setText(f"  {icon}  {name}  ")
+        self._level_badge.setText(f"  {icon}  {lang_manager.tr(name)}  ")
         self._level_badge.setStyleSheet(
             f"background:{_ACCENT}22; border:1px solid {_ACCENT}55; border-radius:8px; "
             f"color:{_ACCENT}; font-size:12px; font-weight:800; padding:0 8px;"
@@ -882,8 +882,8 @@ class AnalyticsPage(QScrollArea):
         if not data:
             for lbl in self._stat_labels.values():
                 lbl.setText("—")
-            self._best_box.setText("Henüz satış yok")
-            self._worst_box.setText("Henüz satış yok")
+            self._best_box.setText(lang_manager.tr("Henüz satış yok"))
+            self._worst_box.setText(lang_manager.tr("Henüz satış yok"))
             return
 
         pnl_color = _GREEN if data["total_pnl"] >= 0 else _RED

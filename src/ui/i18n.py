@@ -637,7 +637,12 @@ TRANSLATIONS: dict[str, str] = {
     "  🔒 İleri": "  🔒 Advanced",
     "{count} / {total} kazanıldı": "{count} / {total} unlocked",
     "Tüm görevler tamamlandı!": "All tasks completed!",
-    "Artık bir portföy ustasısın. Liderliği koru!": "You are now a portfolio master. Maintain your lead!"
+    "Artık bir portföy ustasısın. Liderliği koru!": "You are now a portfolio master. Maintain your lead!",
+    "🔒 Bu görev önceki görevi tamamladıktan sonra açılır.": "🔒 This task unlocks after completing the previous task.",
+    "🔒  Bu görev önceki görevi tamamladıktan sonra açılır.": "🔒  This task unlocks after completing the previous task.",
+    "🌱 Başlangıç": "🌱 Beginner",
+    "🌱  Başlangıç": "🌱  Beginner",
+    "  🌱  Başlangıç": "  🌱  Beginner",
 }
 
 DB_ERROR_TRANSLATIONS: dict[str, str] = {
