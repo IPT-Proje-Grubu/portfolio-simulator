@@ -1,191 +1,131 @@
 # Portfolio Simulator
 
-Gelişmiş bir Python tabanlı portföy yönetimi, kripto/hisse analiz ve interaktif öğrenme uygulaması.  
-PyQt6 ile yazılmış, masaüstü (Windows/macOS/Linux) ortamında çalışan, Google Gemini AI destekli bir eğitim ve simülasyon platformudur.
+A Python desktop app for learning how to invest. You can buy and sell assets, see your profit or loss, and get advice from an AI coach.
+
+Built with **PyQt6** and **Google Gemini AI**. Works on Windows, macOS, and Linux.
 
 ---
 
-## Kişisel Bilgisayarda Çalıştırma
+## How to Run
 
 ```powershell
-# 1. Proje klasörüne git
+# 1. Go to the project folder
 cd C:\Users\kerem\portfolio-simulator
-# 2. Sanal ortam oluştur  (ilk seferde bir kez yapılır)
-python -m venv venv
-# 3. Sanal ortamı etkinleştir
-.\venv\Scripts\Activate.ps1
-# 4. Gerekli paketleri yükle  (ilk seferde bir kez yapılır)
-pip install PyQt6
 
-#*ŞİMDİLİK BUNU YAPMAYIN!
-pip install google-generativeai   # AI Koç özelliği için (isteğe bağlı) 
-# 5. Uygulamayı başlat
+# 2. Create a virtual environment (do this only once)
+python -m venv venv
+
+# 3. Turn on the virtual environment
+.\venv\Scripts\Activate.ps1
+
+# 4. Install the required packages (do this only once)
+pip install -r requirements.txt
+
+# 5. Start the app
 python main.py
 ```
-> **Not:** Sonraki açılışlarda sadece 1. 3. ve 5. adımları çalıştırman yeterli.
----
 
-## Özellikler
-
-### Portföy Yönetimi
-- Gerçek zamanlı simüle fiyatlarla alım/satım emirleri (3 saniyede bir güncellenir)
-- Açık pozisyon takibi: ortalama maliyet, piyasa değeri, gerçekleşmemiş/gerçekleşmiş K/Z
-- Portföy değer geçmişi ve grafik görselleştirme
-- Nakit bakiye yönetimi ve işlem geçmişi
-
-### Analiz Modülü
-- Seçili tarih aralığında senaryo simülasyonu
-- Doğrusal regresyon tabanlı tahmin (RegressionForecaster)
-- Trend yönü, değişim yüzdesi ve volatilite hesaplama
-- 6 adımlık tahmin noktaları tablosu
-
-### Veri İşleme
-- CSV dosyası yükleme ve otomatik kolon haritası analizi
-- Tarih/fiyat kolonu otomatik tespiti
-- Temizlenmiş veri seti yönetimi
-
-### Öğrenme Modu (15 Görev, 3 Seviye)
-Kullanıcı sıralı görevleri tamamlayarak XP kazanır ve seviyeleri açar.
-
-| Seviye | Gerekli XP | Görev Sayısı | Konu |
-|--------|-----------|--------------|------|
-| 🌱 Başlangıç | 0 XP | 5 görev | İlk alım, satış, portföy inceleme, analiz, rapor |
-| 📈 Orta | 300 XP | 5 görev | Çeşitlendirme, kârlı satış, büyük alım, tahmin, hesap makinesi |
-| 🚀 İleri | 700 XP | 5 görev | Dengeli portföy, büyük kârlı satış, tam döngü, çoklu satış, büyük tahmin |
-
-- **Seviye kilitleme:** Bir seviyeyi tamamlamadan bir sonraki açılmaz
-- **Gamification:** XP sistemi, rozet ödülleri, liderboard
-- **Başarımlar ve Meydan Okumalar:** Özel koşullarla tetiklenen ek ödüller
-
-### "Hatadan Öğren" Sistemi
-Her alım/satım sonrası kural tabanlı hata tespiti:
-
-| Kural | Tetikleyici | Önerilen Aksiyon |
-|-------|------------|------------------|
-| Aşırı konsantrasyon | Tek varlık > %55 portföy | Çeşitlendirme yap |
-| Büyük tek işlem | İşlem > nakit'in %50'si | Daha küçük alımlar yap |
-| Zararda panik satış | Kayıp > -%20 | Uzun vadeli düşün |
-| Kazanan erken sat | Kâr < %5 iken sat | Pozisyonu tut |
-| Çeşitlilik yok | Sadece 1 varlık | Farklı sektörler ekle |
-| Atıl nakit | Nakit > %80 portföy | Yatırım değerlendirmesi yap |
-| Aşırı işlem | 10+ işlem, kazan oranı < %30 | İşlem sıklığını azalt |
-
-### AI Koç Sistemi (Gemini + Kural Tabanlı Hibrit)
-- **Kural tabanlı analiz:** API bağlantısı olmadan da çalışır, anlık portföy durumuna göre öneri üretir
-- **Gemini AI:** Gerçek portföy verisiyle zenginleştirilmiş bağlamsal öneriler
-- **Soru-Cevap:** Kullanıcı soru sorar, AI gerçek portföy verisine bakarak yanıtlar
-- **Görev ipucu:** Öğrenme modundayken cevabı vermeden yönlendirici ipuçları
-- **Asenkron çalışma:** API çağrıları arka planda çalışır, arayüz donmaz
-
-### Liderboard Sistemi
-- Oturum başına rastgele Türkçe kullanıcı adı atanır (giriş gerektirmez)
-- `leaderboard.json` dosyasına yerel olarak kaydedilir
-- Toplam K/Z, işlem sayısı, kazanma oranı, risk skoru ve seviyeye göre sıralama
-- İlk 10 oyuncu görüntülenir
+> **Note:** Next time, you only need to do steps 1, 3, and 5.
 
 ---
 
-## Proje Yapısı
+## What Can You Do?
 
-```
-portfolio-simulator/
-│
-├── main.py                         # Uygulama giriş noktası
-├── requirements.txt                # Bağımlılıklar
-├── .env.example                    # API anahtarı örnek dosyası
-├── leaderboard.json                # Liderboard verileri (otomatik oluşturulur)
-│
-└── src/
-    ├── app.py                      # PyQt6 uygulama bootstrap
-    │
-    ├── ai/                         # AI Koç modülleri
-    │   ├── gemini_service.py       # Gemini API katmanı (önbellekleme, async)
-    │   ├── context_builder.py      # Portföy durumundan AI bağlamı oluşturma
-    │   └── ai_coach.py             # Hibrit AI sistemi + kural motoru
-    │
-    ├── learning/                   # Öğrenme sistemi
-    │   ├── manager.py              # LearningManager, LearningExtra, Achievement, Challenge
-    │   ├── level.py                # Level sınıfı
-    │   ├── task.py                 # Task sınıfı ve TaskStatus
-    │   ├── mistake_detector.py     # Hata tespiti ve uyarı sistemi
-    │   ├── leaderboard.py          # LeaderboardManager, JSON kalıcılığı
-    │   └── system.py               # Geriye dönük uyumluluk alias'ları
-    │
-    ├── portfolio/                  # Portföy iş mantığı
-    │   ├── portfolio.py            # PortfolioState, işlem motoru
-    │   ├── asset.py                # Position veri modeli
-    │   ├── trade.py                # Trade veri modeli
-    │   └── market.py               # PriceFeed, WATCHLIST, fiyat simülasyonu
-    │
-    ├── analysis/                   # Analiz motoru
-    │   ├── regression_model.py     # RegressionForecaster
-    │   └── trend_analysis.py       # TrendAnalyzer, TrendSummary
-    │
-    ├── data_processing/            # CSV işleme
-    │   ├── data_loader.py          # DataLoader, DatasetInfo
-    │   └── data_cleaner.py         # DataCleaner, CleanedDataset
-    │
-    ├── alerts/                     # Uyarı sistemi
-    │   └── alert_system.py         # AlertSystem
-    │
-    ├── education/                  # Eğitim içerikleri
-    │   ├── content.py              # GLOSSARY, TIPS, TOPICS, TUTORIAL_STEPS
-    │   └── widgets.py              # Eğitim widget'ları
-    │
-    ├── ui/                         # Kullanıcı arayüzü
-    │   ├── main_window.py          # Ana pencere ve tüm sayfalar
-    │   ├── learn_page.py           # Öğrenme modu sayfası (LevelPage, AICoachPage…)
-    │   └── welcome_dialog.py       # Karşılama ekranı
-    │
-    └── visualization/              # Grafik bileşenleri
-        ├── charts.py               # ChartPlaceholder (çizgi/pasta grafik)
-        └── portfolio_chart.py      # Portföy dilim hesaplama
-```
+### Buy and Sell
+- Buy and sell assets with simulated prices (prices update every 3 seconds)
+- See your open positions: average cost, current value, profit/loss
+- See your portfolio value as a chart
+- Track your cash balance and trade history
+
+### Analysis
+- Run a simulation with a selected date range
+- See price predictions using a simple regression model
+- See trend direction, price change, and volatility
+
+### Load Data
+- Load price data from CSV files
+- The app finds the date and price columns automatically
+
+### Learn Mode (15 Tasks, 3 Levels)
+Complete tasks to earn XP and unlock new levels.
+
+| Level | XP Needed | Tasks | Topics |
+|-------|-----------|-------|--------|
+| 🌱 Beginner | 0 XP | 5 tasks | First buy, sell, portfolio check, analysis, report |
+| 📈 Intermediate | 300 XP | 5 tasks | Diversify, sell for profit, big buy, forecast, calculator |
+| 🚀 Advanced | 700 XP | 5 tasks | Balanced portfolio, big profit, full cycle, multi-sell, big forecast |
+
+- You must finish one level before the next one opens
+- You earn XP, badges, and leaderboard points
+
+### Learn from Mistakes
+After every trade, the app checks if you made a common mistake:
+
+| Rule | When it fires | Tip |
+|------|--------------|-----|
+| Too much in one asset | One asset > 55% of portfolio | Diversify |
+| Too large single trade | Trade > 50% of your cash | Make smaller trades |
+| Panic sell at a loss | Loss > -20% | Think long-term |
+| Sell a winner too early | Profit < 5% | Hold the position |
+| No diversification | Only 1 asset | Add different assets |
+| Too much idle cash | Cash > 80% of portfolio | Consider investing |
+| Too many trades | 10+ trades, win rate < 30% | Trade less often |
+
+### AI Coach (Gemini + Rule-Based)
+- **Rule-based mode:** Works without an API key. Gives advice based on your portfolio.
+- **Gemini AI mode:** Gives detailed advice using your real portfolio data.
+- **Q&A:** You can ask the AI questions about your portfolio.
+- **Task hints:** The AI gives you hints for learning tasks (without giving the answer).
+- **Non-blocking:** AI calls run in the background. The app does not freeze.
+
+### Leaderboard
+- Each session gets a random Turkish username (no login needed)
+- Saved locally in `leaderboard.json`
+- Sorted by profit/loss, trade count, win rate, risk score, and level
+- Shows the top 10 players
 
 ---
 
-## Sayfalar
+## Pages
 
-| # | Sayfa | Açıklama |
-|---|-------|----------|
-| 0 | **Dashboard** | Portföy özeti, XP ilerleme, aktif görev, AI önerisi, risk rozeti |
-| 1 | **İşlem** | Alım/satım emri, açık pozisyonlar, hesap özeti, görev banner'ı |
-| 2 | **Geçmiş** | İşlem geçmişi tablosu, kazanma oranı, kârlı satımlar, risk skoru |
-| 3 | **Veri** | CSV yükleme ve kolon haritası analizi |
-| 4 | **Analiz** | Senaryo simülasyonu, trend analizi, AI Koç yorumu |
-| 5 | **Öğren** | Görevler, başarımlar, meydan okumalar, liderboard, AI Koç |
+| # | Page | What it does |
+|---|------|-------------|
+| 0 | **Dashboard** | Portfolio summary, XP progress, active task, AI tip, risk badge |
+| 1 | **Trade** | Buy/sell orders, open positions, account summary, task banner |
+| 2 | **History** | Trade history table, win rate, profitable sales, risk score |
+| 3 | **Data** | Load a CSV file and see column info |
+| 4 | **Analysis** | Scenario simulation, trend analysis, AI Coach comment |
+| 5 | **Learn** | Tasks, achievements, challenges, leaderboard, AI Coach |
 
 ---
 
-## AI Koç Kurulumu (İsteğe Bağlı)
+## AI Coach Setup (Optional)
 
-AI Koç sistemi API anahtarı olmadan **kural tabanlı modda** tam çalışır.  
-Gemini ile güçlendirmek için:
+The AI Coach works in **rule-based mode** without any API key.  
+To use Gemini AI:
 
-**1. Ücretsiz API anahtarı al:**  
+**1. Get a free API key:**  
 [https://aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
 
-**2. `.env` dosyası oluştur:**
+**2. Create a `.env` file:**
 ```powershell
 Copy-Item .env.example .env
 ```
 
-**3. Dosyayı düzenle:**
+**3. Edit the file:**
 ```
-GEMINI_API_KEY=buraya_api_anahtarını_yapıştır
+GEMINI_API_KEY=paste_your_key_here
 ```
-
-**4. Alternatif:** Uygulamayı açtıktan sonra **Öğren → AI Koç** sekmesinden API anahtarını doğrudan girebilirsin.
 
 ---
 
-## Gereksinimler
+## Requirements
 
-| Paket | Versiyon | Zorunlu | Açıklama |
-|-------|---------|---------|----------|
-| Python | >= 3.10 | Evet | f-string, match, type hint desteği için |
-| PyQt6 | >= 6.10.2 | Evet | Masaüstü GUI framework |
-| google-generativeai | >= 0.8.6 | Hayır | Gemini AI desteği |
+| Package | Version | Required | Description |
+|---------|---------|----------|-------------|
+| Python | >= 3.10 | Yes | The programming language |
+| PyQt6 | >= 6.10.2 | Yes | Desktop UI framework |
+| google-genai | latest | No | For Gemini AI support |
 
 ```powershell
 pip install -r requirements.txt
@@ -193,52 +133,84 @@ pip install -r requirements.txt
 
 ---
 
-## XP ve Seviye Sistemi
+## XP and Level System
 
 ```
 0 XP ──────── 300 XP ──────── 700 XP ──────── 1200 XP
-  🌱 Başlangıç   📈 Orta          🚀 İleri         🏆 Usta
-  (5 görev)      (5 görev)        (5 görev)
+  🌱 Beginner   📈 Intermediate  🚀 Advanced      🏆 Master
+  (5 tasks)     (5 tasks)        (5 tasks)
 ```
 
-- Her görev tamamlandığında **100–200 XP** kazanılır
-- Başarımlar ekstra **50–150 XP** sağlar
-- Meydan okumalar ekstra **100–200 XP** sağlar
-- Bir seviyeyi tamamlamadan bir sonraki kilidini açamazsın
+- Each task gives you **100–200 XP**
+- Achievements give **50–150 XP**
+- Challenges give **100–200 XP**
+- You cannot open the next level until you finish the current one
 
 ---
 
-## Mimari Tasarım Kararları
+## Project Structure
 
-**OOP Prensipler:**
-- `Task`, `Level`, `LearningManager` tamamen birbirinden bağımsız sınıflar
-- `PortfolioState` iş mantığını taşır; UI ona bağımlı, o UI'a bağımlı değil
-- `AICoach`, `GeminiService`'i bir bağımlılık olarak alır — kolay swap/mock
-- `MistakeDetector` saf fonksiyonlar üzerine kurulu, state tutmaz
-
-**Asenkron AI çağrıları:**
-- `GeminiWorker(QThread)` API çağrılarını arka planda çalıştırır
-- Ana thread hiçbir zaman bloklanmaz
-- Callback mekanizması ile sonuçlar UI'a iletilir
-
-**Kalıcılık:**
-- `leaderboard.json` — liderboard verileri
-- `.env` — API anahtarları (git'e eklenmez)
-- Portföy state'i şu an bellekte tutulur (oturum başına sıfırlanır)
+```
+portfolio-simulator/
+│
+├── main.py                         # App entry point
+├── requirements.txt                # Package list
+├── .env.example                    # Example API key file
+├── leaderboard.json                # Leaderboard data (auto-created)
+│
+└── src/
+    ├── app.py                      # PyQt6 app setup
+    │
+    ├── ai/                         # AI Coach modules
+    │   ├── gemini_service.py       # Gemini API connection (cache, async)
+    │   ├── context_builder.py      # Builds AI context from portfolio data
+    │   └── ai_coach.py             # Hybrid AI system + rule engine
+    │
+    ├── learning/                   # Learning system
+    │   ├── manager.py              # LearningManager, Achievement, Challenge
+    │   ├── level.py                # Level class
+    │   ├── task.py                 # Task class and TaskStatus
+    │   ├── mistake_detector.py     # Mistake detection and warnings
+    │   ├── leaderboard.py          # LeaderboardManager, JSON storage
+    │   └── system.py               # Backward compatibility aliases
+    │
+    ├── portfolio/                  # Portfolio logic
+    │   ├── portfolio.py            # PortfolioState, trade engine
+    │   ├── asset.py                # Position data model
+    │   ├── trade.py                # Trade data model
+    │   └── market.py               # PriceFeed, WATCHLIST, price simulation
+    │
+    ├── analysis/                   # Analysis engine
+    │   ├── regression_model.py     # RegressionForecaster
+    │   └── trend_analysis.py       # TrendAnalyzer, TrendSummary
+    │
+    ├── data_processing/            # CSV handling
+    │   ├── data_loader.py          # DataLoader, DatasetInfo
+    │   └── data_cleaner.py         # DataCleaner, CleanedDataset
+    │
+    ├── alerts/                     # Alert system
+    │   └── alert_system.py         # AlertSystem
+    │
+    ├── education/                  # Education content
+    │   ├── content.py              # GLOSSARY, TIPS, TOPICS, TUTORIAL_STEPS
+    │   └── widgets.py              # Education widgets
+    │
+    ├── ui/                         # User interface
+    │   ├── main_window.py          # Main window and all pages
+    │   ├── learn_page.py           # Learn page (LevelPage, AICoachPage…)
+    │   └── welcome_dialog.py       # Welcome screen
+    │
+    └── visualization/              # Chart components
+        ├── charts.py               # ChartPlaceholder (line/pie chart)
+        └── portfolio_chart.py      # Portfolio slice calculation
+```
 
 ---
 
-## Ekran Görüntüleri
+## Design Notes
 
-> Uygulama tamamen koyu tema (dark mode) üzerine tasarlanmıştır.  
-> Renk paleti: `#0b0f1a` arka plan, `#2563eb` vurgu, `#10b981` yeşil, `#ef4444` kırmızı.
-
----
-
-## Geliştirici Notları
-
-- Tüm Python dosyaları `from __future__ import annotations` ile başlar (Python 3.9 uyumluluğu için)
-- Sabitler `_BIG_CAPS` şeklinde özel adlandırılmış
-- UI bileşenleri `_lbl()`, `_btn()`, `_card()`, `_metric()` yardımcıları ile standartlaştırılmış
-- Linting: PyLance / Pylint ile hatasız
-- Test dosyaları: `tests/test_portfolio.py`, `tests/test_alerts.py`
+- The app uses a **dark theme**. Background: `#0b0f1a`, accent: `#2563eb`, green: `#10b981`, red: `#ef4444`.
+- `PortfolioState` holds all business logic. The UI depends on it, not the other way around.
+- `GeminiWorker` runs API calls on a background thread so the UI never freezes.
+- The leaderboard is saved in `leaderboard.json`. The API key is saved in `.env` (not committed to git).
+- Portfolio data is kept in memory and resets each session.
